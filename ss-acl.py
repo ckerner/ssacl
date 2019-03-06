@@ -27,6 +27,7 @@ import os
 import shlex
 from stat import *
 from tempfile import mkstemp
+import pprint
 
 #get_default_owner_name
 #get_default_group_name
@@ -41,6 +42,9 @@ from tempfile import mkstemp
 def run_cmd( cmdstr=None ):
     """
     Wrapper around subprocess module calls.
+
+    :param: A string containing the command to run.
+    :return: The text output of the command.
     """
     if not cmdstr:
        return None
@@ -53,29 +57,109 @@ def run_cmd( cmdstr=None ):
        exit( subp.returncode )
     return( outdata )
 
+def check_group_acl( fnam=None, group=None ):
+    """
+    This function will return the group ACL of the specified file.
+    """
 
-def get_acl( fnam ):
-    fqpn = os.path.abspath( fnam )
-    stats = os.stat( fqpn )
+    myacl = get_acl( fnam )
+    if myacl == None:
+       return '????' 
+    else:
+       if group in myacl['GROUPS'].keys():
+          return myacl['GROUPS'][group]['PERMS']
+       else:
+          return '----'
+
+def get_acl( fnam=None ):
+    """
+    Fetch the file ACLs and return them in a dict.
+
+    :param fnam: The name of the file or directory to get the ACLs on.
+    :return: Returns a dict with the following information:
+             acl[FQPN] - Fully qualified pathname of the file.
+             acl[TYPE] - f for file and D for directories
+             acl[OWNER] - Owner of the file
+             acl[GROUP] - Group of the file
+             acl[USERP] - User permissions
+             acl[GROUPP] - Group permissions
+             acl[OTHERP] - Other permissions
+             acl[MASK] - File mask
+             acl[USERS]
+                   [USER]
+                       [PERMS]
+                       [EFFECTIVE]
+             acl[GROUPS]
+                   [GROUP]
+                       [PERMS]
+                       [EFFECTIVE]
+    """
+    if not fnam:
+       return None
+
+    mydict = {}
+    mydict['GROUPS'] = {}
+    mydict['USERS'] = {}
+
+    try:
+       fqpn = os.path.abspath( fnam )
+       stats = os.stat( fqpn )
+    except:
+       return None
+
+    mydict['FQPN'] = fqpn
     mode = stats[ST_MODE]
     cmd = '/usr/lpp/mmfs/bin/mmgetacl '
     if S_ISDIR( mode ):
-       print("Directory: %s" % ( fqpn ) )
+       #print("Directory: %s" % ( fqpn ) )
        cmd = cmd + '-d ' + fqpn
+       mydict['TYPE'] = 'd'
     elif S_ISREG( mode ):
-       print("File: %s" % ( fqpn ) )
+       #print("File: %s" % ( fqpn ) )
        cmd = cmd + fqpn
+       mydict['TYPE'] = 'f'
     else:
        print("Unknown error")
        sys.exit(1)
 
     output = run_cmd( cmd )
-    for line in output:
+    for line in output.splitlines():
         if '#owner:' in line:
-           owner = line.split(':')[1]
-           print("Owner: %s" % ( owner ))
-        print(line,end="")
+           mydict['OWNER'] = line.split(':')[1]
+        elif '#group:' in line:
+           mydict['GROUP'] = line.split(':')[1]
+        elif 'user::' in line:
+           if line.split(':')[1] == '':
+              mydict['USERP'] = line.split(':')[2]
+           else:
+              user_name=line.split(':')[1]
+              mydict['USERS'][user_name] = {}
+              mydict['USERS'][user_name]['PERMS']=line.split(':')[2][0:4]
+              mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
+        elif 'group:' in line:
+           if line.split(':')[1] == '':
+              mydict['GROUPP'] = line.split(':')[2]
+           else:
+              group_name=line.split(':')[1]
+              mydict['GROUPS'][group_name] = {}
+              mydict['GROUPS'][group_name]['PERMS']=line.split(':')[2][0:4]
+              mydict['GROUPS'][group_name]['EFFECTIVE']=line.split(':')[3][1:5]
+        elif 'other::' in line:
+           mydict['OTHERP'] = line.split(':')[2]
+        elif 'mask::' in line:
+           mydict['MASK'] = line.split(':')[2]
+    return mydict
 
 if __name__ == '__main__':
-   get_acl( '/data/acl/a' )
+   myacl = get_acl( '/data/acl/a' )
+   pprint.pprint( myacl )
+
+   p = check_group_acl( '/data/acl/a', 'ckerner' )
+   print("Group perms for ckerner: %s" % ( p ))
+
+   p = check_group_acl( '/data/acl/a', 'bob' )
+   print("Group perms for bob: %s" % ( p ))
+
+   p = check_group_acl( '/data/acl/nofile', 'ckerner' )
+   print("Group perms for nofile: %s" % ( p ))
 
