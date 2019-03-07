@@ -71,6 +71,85 @@ def check_group_acl( fnam=None, group=None ):
        else:
           return '----'
 
+def get_default_parent_acl( fnam=None ):
+    if not fnam:
+       return None
+
+    try:
+       fqpn = os.path.dirname( os.path.abspath( fnam ) )
+    except:
+       return None
+    print("Parent Path: %s" % ( fqpn ) )
+    return get_default_acl( fqpn )
+
+def get_default_acl( fnam=None ):
+    """
+    Fetch the default ACL that is being applied.  If a file is specified, the
+    default ACL of the containing directory is returned.  If a directory is
+    specified, the default ACL for that directory is returned.
+
+    :param fnam: The name of the file or directory to get the ACLs on.
+    :return: Returns a dict with the following information:
+             acl[FQPN] - Fully qualified pathname of the file.
+             acl[TYPE] - f for file and D for directories
+             acl[OWNER] - Owner of the file
+             acl[GROUP] - Group of the file
+             acl[USERP] - User permissions
+             acl[GROUPP] - Group permissions
+             acl[OTHERP] - Other permissions
+             acl[MASK] - File mask
+             acl[USERS]
+                   [USER]
+                       [PERMS]
+                       [EFFECTIVE]
+             acl[GROUPS]
+                   [GROUP]
+                       [PERMS]
+                       [EFFECTIVE]
+    """
+    if not fnam:
+       return None
+
+    mydict = {}
+    mydict['GROUPS'] = {}
+    mydict['USERS'] = {}
+
+    try:
+       fqpn = os.path.abspath( fnam )
+       stats = os.stat( fqpn )
+    except:
+       return None
+
+    cmd = '/usr/lpp/mmfs/bin/mmgetacl -d ' + fqpn
+    output = run_cmd( cmd )
+
+    for line in output.splitlines():
+        if '#owner:' in line:
+           mydict['OWNER'] = line.split(':')[1]
+        elif '#group:' in line:
+           mydict['GROUP'] = line.split(':')[1]
+        elif 'user::' in line:
+           if line.split(':')[1] == '':
+              mydict['USERP'] = line.split(':')[2]
+           else:
+              user_name=line.split(':')[1]
+              mydict['USERS'][user_name] = {}
+              mydict['USERS'][user_name]['PERMS']=line.split(':')[2][0:4]
+              mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
+        elif 'group:' in line:
+           if line.split(':')[1] == '':
+              mydict['GROUPP'] = line.split(':')[2]
+           else:
+              group_name=line.split(':')[1]
+              mydict['GROUPS'][group_name] = {}
+              mydict['GROUPS'][group_name]['PERMS']=line.split(':')[2][0:4]
+              mydict['GROUPS'][group_name]['EFFECTIVE']=line.split(':')[3][1:5]
+        elif 'other::' in line:
+           mydict['OTHERP'] = line.split(':')[2]
+        elif 'mask::' in line:
+           mydict['MASK'] = line.split(':')[2]
+    return mydict
+
 def get_acl( fnam=None ):
     """
     Fetch the file ACLs and return them in a dict.
@@ -109,21 +188,18 @@ def get_acl( fnam=None ):
 
     mydict['FQPN'] = fqpn
     mode = stats[ST_MODE]
-    cmd = '/usr/lpp/mmfs/bin/mmgetacl '
     if S_ISDIR( mode ):
-       #print("Directory: %s" % ( fqpn ) )
-       cmd = cmd + '-d ' + fqpn
        mydict['TYPE'] = 'd'
     elif S_ISREG( mode ):
-       #print("File: %s" % ( fqpn ) )
-       cmd = cmd + fqpn
        mydict['TYPE'] = 'f'
     else:
-       print("Unknown error")
-       sys.exit(1)
+       mydict['TYPE'] = 'u'
 
+    cmd = '/usr/lpp/mmfs/bin/mmgetacl ' + fqpn
     output = run_cmd( cmd )
+
     for line in output.splitlines():
+#        print(line)
         if '#owner:' in line:
            mydict['OWNER'] = line.split(':')[1]
         elif '#group:' in line:
@@ -151,8 +227,11 @@ def get_acl( fnam=None ):
     return mydict
 
 if __name__ == '__main__':
-   myacl = get_acl( '/data/acl/a' )
-   pprint.pprint( myacl )
+   acla = get_acl( '/data/acl/a' )
+   pprint.pprint( acla )
+
+   aclb = get_acl( '/data/acl/new' )
+   pprint.pprint( aclb )
 
    p = check_group_acl( '/data/acl/a', 'ckerner' )
    print("Group perms for ckerner: %s" % ( p ))
@@ -163,3 +242,8 @@ if __name__ == '__main__':
    p = check_group_acl( '/data/acl/nofile', 'ckerner' )
    print("Group perms for nofile: %s" % ( p ))
 
+   parent = get_default_parent_acl( '/data/acl/new/1' )
+   pprint.pprint( parent )
+
+   parent = get_default_parent_acl( '/data/acl/new/' )
+   pprint.pprint( parent )
