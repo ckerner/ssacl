@@ -1,8 +1,8 @@
 from distutils.core import setup
 
-setup( name = 'ss-acl',
+setup( name = 'ssacl',
              version = '1.00',
-             py_modules = [ 'ss-acl' ],
+             py_modules = [ 'ssacl' ],
            )
 
 
