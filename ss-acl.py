@@ -1,24 +1,31 @@
 #!/usr/bin/env python
-#=====================================================================================
-# Chad Kerner, Senior Systems Engineer
-# Storage Enabling Technologies
-# National Center for Supercomputing Applications
-# ckerner@illinois.edu     chad.kerner@gmail.com
-#=====================================================================================
-#
-# This was born out of a need to programmatically interface with IBM Spectrum
-# Scale or the software formerly knows as GPFS.
-#
-# There is NO support, use it at your own risk.  Although I have not coded
-# anything too awfully dramatic in here.
-#
-# If you find a bug, fix it.  Then send me the diff and I will merge it into
-# the code.
-#
-# You may want to pull often because this is being updated quite frequently as
-# our needs arise in our clusters.
-#
-#=====================================================================================
+"""
+We needed to be able to modify SpectrumScale ACLs easily and in parallel, and
+the interface provided by IBM, namely mmgetacl and mmputacl are less that
+friendly when it comes to parsing millions of files and maintaining ACLs on
+them.
+
+The source for this is publicly available at:
+          github: https://github.com/ckerner/ss-acl.git
+
+Chad Kerner, Senior Storage Engineer
+Storage Enabling Technologies
+National Center for Supercomputing Applications
+ckerner@illinois.edu     chad.kerner@gmail.com
+
+This was born out of a need to programmatically interface with IBM Spectrum
+Scale or the software formerly knows as GPFS.
+
+There is NO support, use it at your own risk.  Although I have not coded
+anything too awfully dramatic in here.
+
+If you find a bug, fix it.  Then send me the diff and I will merge it into
+the code.
+
+You may want to pull often because this is being updated quite frequently as
+our needs arise in our clusters.
+
+"""
 
 from __future__ import print_function
 from subprocess import Popen, PIPE
@@ -57,14 +64,21 @@ def run_cmd( cmdstr=None ):
        exit( subp.returncode )
     return( outdata )
 
-def check_group_acl( fnam=None, group=None ):
+def get_group_acl( fnam=None, group=None ):
     """
     This function will return the group ACL of the specified file.
+
+    :param: A string containing the filename.
+    :param: A string containing the name of the group to check for.
+    :return: A 4 character string:
+               ???? - If the file does not exist.
+               ---- - If the group does not have an ACL on the file.
+                    - The actual 4 character permission mask(Ex: rw--)
     """
 
     myacl = get_acl( fnam )
     if myacl == None:
-       return '????' 
+       return '????'
     else:
        if group in myacl['GROUPS'].keys():
           return myacl['GROUPS'][group]['PERMS']
@@ -72,6 +86,12 @@ def check_group_acl( fnam=None, group=None ):
           return '----'
 
 def get_default_parent_acl( fnam=None ):
+    """
+    Fetch the default ACL of the parent directory for the specified path.  If
+    a file is specified, the default ACL of the containing directory is returned.
+    If a directory is specified, the default ACL for the parent of that
+    directory is returned.
+    """
     if not fnam:
        return None
 
@@ -79,7 +99,6 @@ def get_default_parent_acl( fnam=None ):
        fqpn = os.path.dirname( os.path.abspath( fnam ) )
     except:
        return None
-    print("Parent Path: %s" % ( fqpn ) )
     return get_default_acl( fqpn )
 
 def get_default_acl( fnam=None ):
@@ -199,7 +218,6 @@ def get_acl( fnam=None ):
     output = run_cmd( cmd )
 
     for line in output.splitlines():
-#        print(line)
         if '#owner:' in line:
            mydict['OWNER'] = line.split(':')[1]
         elif '#group:' in line:
@@ -227,22 +245,23 @@ def get_acl( fnam=None ):
     return mydict
 
 if __name__ == '__main__':
-   acla = get_acl( '/data/acl/a' )
-   pprint.pprint( acla )
+   # print("Get File ACL")
+   # acla = get_acl( '/data/acl/a' )
+   # pprint.pprint( acla )
 
-   aclb = get_acl( '/data/acl/new' )
-   pprint.pprint( aclb )
+   # print("See if group ckerner is on file /data/acl/a")
+   # p = get_group_acl( '/data/acl/a', 'ckerner' )
+   # print("Group perms for ckerner: %s" % ( p ))
 
-   p = check_group_acl( '/data/acl/a', 'ckerner' )
-   print("Group perms for ckerner: %s" % ( p ))
+   # print("See if group bob is on file /data/acl/a")
+   # p = get_group_acl( '/data/acl/a', 'bob' )
+   # print("Group perms for bob: %s" % ( p ))
 
-   p = check_group_acl( '/data/acl/a', 'bob' )
-   print("Group perms for bob: %s" % ( p ))
+   # print("See if group ckerner is on a non-existing file /data/acl/nofile")
+   # p = get_group_acl( '/data/acl/nofile', 'ckerner' )
+   # print("Group perms for nofile: %s" % ( p ))
 
-   p = check_group_acl( '/data/acl/nofile', 'ckerner' )
-   print("Group perms for nofile: %s" % ( p ))
-
-   parent = get_default_parent_acl( '/data/acl/new/1' )
+   parent = get_default_acl( '/data/acl/dir_with_default' )
    pprint.pprint( parent )
 
    parent = get_default_parent_acl( '/data/acl/new/' )
