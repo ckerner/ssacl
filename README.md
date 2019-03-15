@@ -1,4 +1,4 @@
-# ss-acl
+# ssacl
 SpectrumScale ACL Module
 
 This module is to allow for the easy maintenance of ACLs in

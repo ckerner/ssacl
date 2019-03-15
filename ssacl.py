@@ -6,7 +6,7 @@ friendly when it comes to parsing millions of files and maintaining ACLs on
 them.
 
 The source for this is publicly available at:
-          github: https://github.com/ckerner/ss-acl.git
+          github: https://github.com/ckerner/ssacl.git
 
 Chad Kerner, Senior Storage Engineer
 Storage Enabling Technologies
