@@ -36,15 +36,32 @@ from stat import *
 from tempfile import mkstemp
 import pprint
 
-#get_default_owner_name
-#get_default_group_name
-#get_default_acl
-#get_mask
-#set_mask
-#get_file_acl
-#get_group_acl
-#set_group_acl
-#check_group_acl
+DRYRUN = 0
+
+
+def ssacl_dryrun_on():
+    """
+    Turn dry-run on.  Commands will be printed but not executed.
+    """
+    global DRYRUN 
+    DRYRUN = 1
+
+def ssacl_dryrun_off():
+    """
+    Turn dry-run off. 
+    """
+    global DRYRUN
+    DRYRUN = 0
+
+def ssacl_dryrun_toggle():
+    """
+    Toggle dry-run. If off, turn on, else turn off.
+    """
+    global DRYRUN
+    if DRYRUN == 0:
+       DRYRUN = 1
+    else:
+       DRYRUN = 0
 
 def run_cmd( cmdstr=None ):
     """
@@ -63,6 +80,15 @@ def run_cmd( cmdstr=None ):
        raise UserWarning( msg )
        exit( subp.returncode )
     return( outdata )
+
+def chown_file( fnam=None, owner=-1, group=-1 ):
+    """
+    To leave the owner or group the same, set it to -1
+    """
+    try:
+       os.chown( fnam, owner, group )
+    except:
+       print("Error: %s %s %s" % ( fnam, owner, group ) )
 
 def get_group_acl( fnam=None, group=None ):
     """
@@ -169,6 +195,23 @@ def get_default_acl( fnam=None ):
            mydict['MASK'] = line.split(':')[2]
     return mydict
 
+def get_acl_raw( fnam=None ):
+    if not fnam:
+       return None
+
+    try:
+       fqpn = os.path.abspath( fnam )
+       stats = os.stat( fqpn )
+    except:
+       return None
+
+    cmd = '/usr/lpp/mmfs/bin/mmgetacl ' + fqpn
+    output = run_cmd( cmd )
+
+    for line in output.splitlines():
+        print(line)
+
+
 def get_acl( fnam=None ):
     """
     Fetch the file ACLs and return them in a dict.
@@ -243,6 +286,49 @@ def get_acl( fnam=None ):
         elif 'mask::' in line:
            mydict['MASK'] = line.split(':')[2]
     return mydict
+
+def set_default_acl( fqpn=None, acl_file=None ):
+    if not fqpn:
+       return None
+
+    mmputacl = '/usr/lpp/mmfs/bin/mmputacl -d -i ' + acl_file + ' ' + fqpn
+    if DRYRUN:
+       print( "DRY RUN:  %s" % ( mmputacl ) )
+    else:
+       print( "EXEC MODE: %s" % ( mmputacl ) )
+
+def set_acl( fqpn=None, acl_file=None ):
+    if not fqpn:
+       return None
+
+    mmputacl = '/usr/lpp/mmfs/bin/mmputacl -i ' + acl_file + ' ' + fqpn
+    if DRYRUN:
+       print( "DRY RUN:  %s" % ( mmputacl ) )
+    else:
+       print( "EXEC MODE: %s" % ( mmputacl ) )
+
+
+def write_acl_file( fqpn=None, acl_dict=None ):
+    if not fqpn:
+       return None
+
+    fd = open( fqpn, "w" )
+    fd.write("user::"+acl_dict['USERP']+"\n")
+    fd.write("group::"+acl_dict['GROUPP']+"\n")
+    fd.write("other::"+acl_dict['OTHERP']+"\n")
+    if 'MASK' in acl_dict.keys():
+       fd.write( "mask::" + acl_dict['MASK'] + "\n" )
+    else:
+       # There was no mask, so create a default full mask
+       fd.write( "mask::rwxc" + "\n" )
+
+    for user in acl_dict['USERS'].keys():
+        fd.write( "user:" + user + ":" + acl_dict['USERS'][user]['PERMS'] + "\n" )
+
+    for group in acl_dict['GROUPS'].keys():
+        fd.write( "group:" + group + ":" + acl_dict['GROUPS'][group]['PERMS'] + "\n" )
+
+    fd.close()
 
 if __name__ == '__main__':
    # print("Get File ACL")
