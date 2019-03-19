@@ -51,12 +51,11 @@ class mmacls:
           self.verbose = False
           self.fname = fname
           try:
-             #self.filename = os.path.dirname( os.path.abspath( fname ) )
              self.filename = os.path.abspath( fname )
+             self.stats = os.stat( self.filename )
           except:
              self.filename = None
              return None
-          self.stats = os.stat( self.filename )
           if S_ISDIR(self.stats[ST_MODE]):
              self.dirname = self.filename
           else:
@@ -235,25 +234,17 @@ class mmacls:
                 print( cmd )
              run_cmd( cmd )
 
-      def write_acl_file( self, aclfile=None ):
-          if not aclfile:
-             return None
+      def debug_on( self ):
+          """
+          Turn debug on.      
+          """
+          self.debug = True
 
-          fd = open( aclfile, "w" )
-          fd.write( "user::" + self.acls['USERP'] + "\n" )
-          fd.write( "group::" + self.acls['GROUPP'] + "\n" )
-          fd.write( "other::" + self.acls['OTHERP'] + "\n" )
-          if 'MASK' in self.acls.keys():
-             fd.write( "mask::" + self.acls['MASK'] + "\n" )
-          else:
-             fd.write( "mask::rwxc" + "\n" )
-
-          for user in self.acls['USERS'].keys():
-              fd.write( "user:" + user + ":" + self.acls['USERS'][user]['PERMS'] + "\n" )
-
-          for group in self.acls['GROUPS'].keys():
-              fd.write( "group:" + group + ":" + self.acls['GROUPS'][group]['PERMS'] + "\n" )
-          fd.close()
+      def debug_off( self ):
+          """
+          Turn debug off.      
+          """
+          self.debug = False
 
       def toggle_debug( self ):
           """
@@ -265,16 +256,46 @@ class mmacls:
              self.debug = True
 
       def dryrun_on( self ):
+          """
+          Turn dryrun on.      
+          """
           self.dryrun = True
 
       def dryrun_off( self ):
+          """
+          Turn dryrun off.      
+          """
           self.dryrun = False
 
       def toggle_dryrun( self ):
+          """
+          Toggle dryrun mode.
+          """
           if self.dryrun == False:
              self.dryrun = True
           else:
              self.dryrun = False
+
+      def verbose_on( self ):
+          """
+          Turn verbose on.      
+          """
+          self.verbose = True
+
+      def verbose_off( self ):
+          """
+          Turn verbose off.      
+          """
+          self.verbose = False
+
+      def toggle_verbose( self ):
+          """
+          Toggle verbose mode.
+          """
+          if self.verbose == False:
+             self.verbose = True
+          else:
+             self.verbose = False
 
 
 def run_cmd( cmdstr=None ):
@@ -304,12 +325,60 @@ def chown_file( fnam=None, owner=-1, group=-1 ):
     except:
        print("Error: %s %s %s" % ( fnam, owner, group ) )
 
+def write_acl_file( aclfile=None, myacls=None ):
+    """
+    Write an ACL file. This does not have to be part of a class. You may
+    want to write one for other thigns.
+    """
+    if not myacls:
+       return None
+
+    if not aclfile:
+       return None
+
+    fd = open( aclfile, "w" )
+    fd.write( "user::" + myacls['USERP'] + "\n" )
+    fd.write( "group::" + myacls['GROUPP'] + "\n" )
+    fd.write( "other::" + myacls['OTHERP'] + "\n" )
+    if 'MASK' in myacls.keys():
+       fd.write( "mask::" + myacls['MASK'] + "\n" )
+    else:
+       fd.write( "mask::rwxc" + "\n" )
+
+    for user in myacls['USERS'].keys():
+        fd.write( "user:" + user + ":" + myacls['USERS'][user]['PERMS'] + "\n" )
+
+    for group in myacls['GROUPS'].keys():
+        fd.write( "group:" + group + ":" + myacls['GROUPS'][group]['PERMS'] + "\n" )
+    fd.close()
+
+def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
+    cmd = MMPUTACL + '-d -i ' + aclfile + ' ' + filename
+    if dryrun:
+       print( cmd )
+    else:
+       if verbose:
+          print( cmd )
+       run_cmd( cmd )
+
+def set_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
+    cmd = MMPUTACL + '-i ' + aclfile + ' ' + filename
+    if dryrun:
+       print( cmd )
+    else:
+       if verbose:
+          print( cmd )
+       run_cmd( cmd )
+
 
 
 if __name__ == '__main__':
    print("Get File ACL")
    a = mmacls( '/data/acl/a' )
-   print("\nDump The Class Info:")
-   a.dump_mmacl()
+   if a.filename:
+      print("\nDump The Class Info:")
+      a.dump_mmacl()
+   else:
+      print("File: %s does not exist." % ( a.fname ) )
 
 
