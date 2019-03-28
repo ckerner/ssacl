@@ -61,7 +61,7 @@ class mmacls:
           else:
              self.dirname = os.path.dirname( self.filename )
           self.get_acl()
-          self.get_default_acl()
+          #self.get_default_acl()
 
       def dump_mmacl( self ):
           print( "File: " + self.filename )
@@ -69,13 +69,22 @@ class mmacls:
           print( "ACL: " )
           print( self.acls )
           print( "Default ACL: " )
-          print( self.default_acls )
+          #print( self.default_acls )
 
       def dump_raw_acl( self ):
           cmd = MMGETACL + self.filename
           output = run_cmd( cmd )
           for line in output.splitlines():
               print( line )
+          print("")
+
+      def clear_acls( self ):
+          if 'MASK' in self.acls:
+             del self.acls['MASK']
+          if 'USERS' in self.acls:
+             del self.acls['USERS']
+          if 'GROUPS' in self.acls:
+             del self.acls['GROUPS']
 
       def get_acl( self ):
           """
@@ -310,6 +319,8 @@ def run_cmd( cmdstr=None ):
     cmd = shlex.split(cmdstr)
     subp = Popen(cmd, stdout=PIPE, stderr=PIPE)
     (outdata, errdata) = subp.communicate()
+    if subp.returncode == 22:
+       return( 'File is not in gpfs.' )
     if subp.returncode != 0:
        msg = "Error\n Command: {0}\n Message: {1}".format(cmdstr,errdata)
        raise UserWarning( msg )
@@ -343,13 +354,18 @@ def write_acl_file( aclfile=None, myacls=None ):
     if 'MASK' in myacls.keys():
        fd.write( "mask::" + myacls['MASK'] + "\n" )
     else:
-       fd.write( "mask::rwxc" + "\n" )
+       # If we have USER and GROUP ACLs, we need a default mask
+       if 'USERS' in myacls.keys():
+          if 'GROUPS' in myacls.keys():
+             fd.write( "mask::rwxc" + "\n" )
 
-    for user in myacls['USERS'].keys():
-        fd.write( "user:" + user + ":" + myacls['USERS'][user]['PERMS'] + "\n" )
+    if 'USERS' in myacls.keys():
+       for user in myacls['USERS'].keys():
+           fd.write( "user:" + user + ":" + myacls['USERS'][user]['PERMS'] + "\n" )
 
-    for group in myacls['GROUPS'].keys():
-        fd.write( "group:" + group + ":" + myacls['GROUPS'][group]['PERMS'] + "\n" )
+    if 'GROUPS' in myacls.keys():
+       for group in myacls['GROUPS'].keys():
+           fd.write( "group:" + group + ":" + myacls['GROUPS'][group]['PERMS'] + "\n" )
     fd.close()
 
 def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
