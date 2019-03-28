@@ -1,0 +1,193 @@
+#!/usr/bin/env python
+"""
+We needed to be able to modify SpectrumScale ACLs easily and in parallel, and
+the interface provided by IBM, namely mmgetacl and mmputacl are less that
+friendly when it comes to parsing millions of files and maintaining ACLs on
+them.
+
+The source for this is publicly available at:
+          github: https://github.com/ckerner/ssacl.git
+
+Chad Kerner, Senior Storage Engineer
+Storage Enabling Technologies
+National Center for Supercomputing Applications
+ckerner@illinois.edu     chad.kerner@gmail.com
+
+This command line interface was to make it easy to modify the ACLs. And it 
+becomes more trivial with the python class to handle it.
+
+There is NO support, use it at your own risk.  Although I have not coded
+anything too awfully dramatic in here.
+
+If you find a bug, fix it.  Then send me the diff and I will merge it into
+the code.
+
+You may want to pull often because this is being updated quite frequently as
+our needs arise in our clusters.
+"""
+
+from __future__ import print_function
+import sys
+import os
+from stat import *
+import pprint
+from ssacl import *
+
+def parse_options( argv ):
+    """
+    This function handles the parsing of the command line arguments.
+
+    Args:
+      argv: A list of command line arguments, passed in from sys.argv
+
+    Returns
+      options: A dictionary of the command line option settings
+      args   : A list of files
+
+    """
+
+    import argparse
+    import textwrap
+    parser = argparse.ArgumentParser(
+           formatter_class = argparse.RawTextHelpFormatter,
+           prog = 'ssacl',
+           description = textwrap.dedent('''\
+                ssacl - Modify ACLs In SpectrumScale 
+
+                This utility will allow you to easily manipulate the ACLs on files        
+                within IBM SpectrumScale.
+
+
+           '''),
+
+           epilog = textwrap.dedent('''\
+
+                Usage Examples:
+
+                - List the ACLs on a file
+                > ssacl --list /data/acl/testfile
+
+                - Add a user ACL to a file
+                > ssacl --add -u 29559 -a 'rwx-' /data/acl/testfile
+
+                NOTE: This CLI requires IBM SpectrumScale to be installed in the default location.
+
+                Chad Kerner - ckerner@illinois.edu
+                Senior Storage Engineer, Storage Enabling Technologies
+                National Center for Supercomputing Applications
+                University of Illinois, Urbana-Champaign''')
+           )
+
+    parser.add_argument( "--list",
+                         dest = "list",
+                         default = False,
+                         action = 'store_true',
+                         help = "List the ACLs on a file or directory. Default: %(default)s")
+
+    parser.add_argument( "--add",
+                         dest = "add",
+                         default = False,
+                         action = 'store_true',
+                         help = "Add an ACL to a file or directory. Default: %(default)s")
+
+    parser.add_argument( "--set",
+                         dest = "set",
+                         default = False,
+                         action = 'store_true',
+                         help = "Overwrite the current ACL of a file or directory. Default: %(default)s")
+
+    parser.add_argument( "--del",
+                         dest = "del",
+                         default = False,
+                         action = 'store_true',
+                         help = "Delete the specified ACL from the file or directory. Default: %(default)s")
+
+    parser.add_argument( "--clear",
+                         dest = "clear",
+                         default = False,
+                         action = 'store_true',
+                         help = "Clear all ACLs from a file or directory. Default: %(default)s")
+
+    parser.add_argument( "-u", "--uid",
+                         dest = "uid",
+                         default = False,
+                         action = 'store',
+                         help = "The UID for the ACL you want to add or remove. Default: %(default)s")
+
+    parser.add_argument( "-g", "--gid",
+                         dest = "gid",
+                         default = False,
+                         action = 'store',
+                         help = "The GID for the ACL you want to add or remove. Default: %(default)s")
+
+    parser.add_argument( "-a", "--acl",
+                         dest = "acl_mask",
+                         default = None,
+                         action = 'store',
+                         help = "The ACL mask you want to have applied. Default: %(default)s")
+
+    parser.add_argument( "-U", "--UID",
+                         dest = "owner_mask",
+                         default = None,
+                         action = 'store',
+                         help = "The ACL to apply for the OWNER of the file or directory. Default: %(default)s")
+
+    parser.add_argument( "-G", "--GID",
+                         dest = "group_mask",
+                         default = None,
+                         action = 'store',
+                         help = "The ACL to apply for the GROUP of the file or directory. Default: %(default)s")
+
+    parser.add_argument( "-O", "--OTHER",
+                         dest = "other_mask",
+                         default = None,
+                         action = 'store',
+                         help = "The ACL to apply for the OTHER of the file or directory. Default: %(default)s")
+
+    parser.add_argument( "-m", "--mask",
+                         dest = "mask",
+                         default = None,
+                         action = 'store',
+                         help = "The ACL mask to apply for all user and group ACLs. Default: %(default)s")
+
+    parser.add_argument( "-r", 
+                         dest = "recursive",
+                         default = False,
+                         action = 'store_true',
+                         help = "Apply the ACL to all files and/or directories recursively. Default: %(default)s")
+
+    parser.add_argument( "-d", "--default",
+                         dest = "default",
+                         default = False,
+                         action = 'store_true',
+                         help = "Apply the ACL as a default to the files and/or directories. Default: %(default)s")
+
+    parser.add_argument( "--dry-run",
+                         dest = "dryrun",
+                         default = False,
+                         action = 'store_true',
+                         help = "Execute in dry-run. Only display the commands to be executed. Default: %(default)s")
+
+    parser.add_argument( "-v", "--verbose",
+                         dest = "verbose",
+                         default = False,
+                         action = 'store_true',
+                         help = "Execute in verbose mode. Default: %(default)s")
+
+    parser.add_argument( "--debug",
+                         dest = "debug",
+                         default = False,
+                         action = 'store_true',
+                         help = "Execute in debug mode. This is pretty verbose. Default: %(default)s")
+
+    options, args = parser.parse_known_args( argv )
+    return ( options, args )
+
+
+
+if __name__ == '__main__':
+   ( options, args ) = parse_options( sys.argv[1:] )
+
+   if options.list:
+      for filename in args:
+          print("File: %s" % ( filename ))
