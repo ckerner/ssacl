@@ -62,9 +62,9 @@ def parse_options( argv ):
            formatter_class = argparse.RawTextHelpFormatter,
            prog = 'ssacl',
            description = textwrap.dedent('''\
-                ssacl - Modify ACLs In SpectrumScale 
+                ssacl - Modify ACLs In SpectrumScale
 
-                This utility will allow you to easily manipulate the ACLs on files        
+                This utility will allow you to easily manipulate the ACLs on files
                 within IBM SpectrumScale.
 
 
@@ -79,6 +79,9 @@ def parse_options( argv ):
 
                 - Add a user ACL to a file
                 > ssacl --add -u 29559 -a 'rwx-' /data/acl/testfile
+
+                - Clear the ACLs on a file
+                > ssacl --clear /data/acl/testfile
 
                 NOTE: This CLI requires IBM SpectrumScale to be installed in the default location.
 
@@ -117,6 +120,12 @@ def parse_options( argv ):
                          default = False,
                          action = 'store_true',
                          help = "Clear all ACLs from a file or directory. Default: %(default)s")
+
+    parser.add_argument( "-f",
+                         dest = "acl_file",
+                         default = False,
+                         action = 'store',
+                         help = "The filename of the ACL file you want to apply with the --set command. Default: %(default)s")
 
     parser.add_argument( "-u", "--uid",
                          dest = "uid",
@@ -160,7 +169,7 @@ def parse_options( argv ):
                          action = 'store',
                          help = "The ACL mask to apply for all user and group ACLs. Default: %(default)s")
 
-    parser.add_argument( "-r", 
+    parser.add_argument( "-r",
                          dest = "recursive",
                          default = False,
                          action = 'store_true',
@@ -209,6 +218,13 @@ if __name__ == '__main__':
              myacl.dump_raw_acl()
           else:
              print("File: %s does not exist." % ( filename ))
+   elif options.set:
+      for filename in args:
+          myacl = mmacls( filename )
+          if myacl.filename != None:
+             if options.verbose:
+                 print("Processing: %s setting ACL to file: %s" % ( myacl.filename, options.acl_file ))
+             set_acl( myacl.filename, options.acl_file, options.dryrun, options.verbose )
    elif options.clear:
       for filename in args:
           myacl = mmacls( filename )
