@@ -9,22 +9,22 @@ ssacl - command line interface examples:
 - List the ACLs on a file:
 
 #-> ssacl --list ./testfile 
-File: /data/acl/testfile
-#owner:root
-#group:root
-user::rw-c
-group::r---
-other::r---
+File: /data/acl/testfile 
+#owner:root 
+#group:root 
+user::rw-c 
+group::r--- 
+other::r--- 
 
-Let's say we want to apply the following ACL to the test file.
+Let's say we want to apply the following ACL to the test file. 
 #-> cat acl.testfile 
-#owner:root
-#group:root
-user::rw-c
-group::r---
-other::r---
-mask::rw--
-group:ckerner:r-x-
+#owner:root 
+#group:root 
+user::rw-c 
+group::r--- 
+other::r--- 
+mask::rw-- 
+group:ckerner:r-x- 
 
 We will run it in verbose mode, to see what's going on
 #-> ssacl --set -f acl.testfile -v testfile 
