@@ -56,3 +56,20 @@ other::----
 #> ls -l testfile
 -rwxr-x--- 1 root root 0 Mar 28 09:15 testfile
 
+Lets add some ACLs:
+#-> ssacl --add -u ckerner -a=rw-- testfile
+#-> ssacl --add -g nfsnobody -a=r--- testfile
+#-> ssacl --add -g rpcuser -a=r-x- testfile
+#-> ssacl --list testfile
+File: /data/acl/testfile
+#owner:root
+#group:root
+user::rwxc
+group::r-x-
+other::----
+mask::rwxc
+user:ckerner:rw--
+group:rpcuser:r-x-
+group:nfsnobody:r---
+
+

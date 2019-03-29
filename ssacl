@@ -129,13 +129,13 @@ def parse_options( argv ):
 
     parser.add_argument( "-u", "--uid",
                          dest = "uid",
-                         default = False,
+                         default = None,
                          action = 'store',
                          help = "The UID for the ACL you want to add or remove. Default: %(default)s")
 
     parser.add_argument( "-g", "--gid",
                          dest = "gid",
-                         default = False,
+                         default = None,
                          action = 'store',
                          help = "The GID for the ACL you want to add or remove. Default: %(default)s")
 
@@ -313,9 +313,9 @@ def process_del_acl():
     for filename in args:
         myacl = mmacls( filename )
         if myacl.filename != None:
-           if options.uid:
+           if options.uid != None:
               myacl.del_user_acl( options.uid )
-           elif options.gid:
+           elif options.gid != None:
               myacl.del_group_acl( options.gid )
            else:
               print('ERROR: Neither --uid or --gid was specified. \nUsage: ssacl --add ',

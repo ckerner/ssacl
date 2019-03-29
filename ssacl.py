@@ -123,7 +123,7 @@ class mmacls:
                  mydict['OWNER'] = line.split(':')[1]
               elif '#group:' in line:
                  mydict['GROUP'] = line.split(':')[1]
-              elif 'user:' in line:
+              elif line.startswith('user:'):
                  if line.split(':')[1] == '':
                     mydict['USERP'] = line.split(':')[2]
                  else:
@@ -134,7 +134,7 @@ class mmacls:
                        mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
                     else:
                        mydict['USERS'][user_name]['EFFECTIVE']='????'
-              elif 'group:' in line:
+              elif line.startswith('group:'):
                  if line.split(':')[1] == '':
                     mydict['GROUPP'] = line.split(':')[2]
                  else:
