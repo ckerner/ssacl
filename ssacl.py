@@ -204,6 +204,15 @@ class mmacls:
                  mydict['MASK'] = line.split(':')[2]
           self.default_acls = mydict
 
+      def update_user_perms( self, mask ):
+          self.acls['USERP'] = mask
+
+      def update_group_perms( self, mask ):
+          self.acls['GROUPP'] = mask
+
+      def update_other_perms( self, mask ):
+          self.acls['OTHERP'] = mask
+
       def get_group_acl( self, group=None ):
           """
           This function will return the group ACL of the specified file.

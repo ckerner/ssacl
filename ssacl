@@ -123,7 +123,7 @@ def parse_options( argv ):
 
     parser.add_argument( "-f",
                          dest = "acl_file",
-                         default = False,
+                         default = None,
                          action = 'store',
                          help = "The filename of the ACL file you want to apply with the --set command. Default: %(default)s")
 
@@ -146,20 +146,20 @@ def parse_options( argv ):
                          help = "The ACL mask you want to have applied. Default: %(default)s")
 
     parser.add_argument( "-U", "--UID",
-                         dest = "owner_mask",
-                         default = None,
+                         dest = "user_mask",
+                         default = False,
                          action = 'store',
                          help = "The ACL to apply for the OWNER of the file or directory. Default: %(default)s")
 
     parser.add_argument( "-G", "--GID",
                          dest = "group_mask",
-                         default = None,
+                         default = False,
                          action = 'store',
                          help = "The ACL to apply for the GROUP of the file or directory. Default: %(default)s")
 
     parser.add_argument( "-O", "--OTHER",
                          dest = "other_mask",
-                         default = None,
+                         default = False,
                          action = 'store',
                          help = "The ACL to apply for the OTHER of the file or directory. Default: %(default)s")
 
@@ -203,39 +203,85 @@ def parse_options( argv ):
     return ( options, args )
 
 def get_temp_filename():
+    """
+    Use the tempfile module to generate unique temporary work filenames. (For the future when this gets
+    to be parallelized.)
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
     tf = tempfile.NamedTemporaryFile()
     return tf.name
 
+def process_list_command():
+    """
+    A --list was specified, so lets dump the ACLs.
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    for filename in args:
+        myacl = mmacls( filename )
+        if myacl.filename != None:
+           print("File: %s" % ( myacl.filename ))
+           myacl.dump_raw_acl()
+        else:
+           print("File: %s does not exist." % ( filename ))
+
+def process_set_command():
+    """
+    A --set was specified, so lets set the ACLs.
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    if options.acl_file == None:
+       print("ERROR: ACL file not specified! \nUsage: ssacl --set -f <ACL File> [ FILE1, FILE2, ....]")
+    elif os.path.isfile( os.path.abspath( options.acl_file )):
+       for filename in args:
+           myacl = mmacls( filename )
+           if myacl.filename != None:
+              if options.verbose:
+                  print("Processing: %s setting ACL to file: %s" % ( myacl.filename, options.acl_file ))
+              set_acl( myacl.filename, options.acl_file, options.dryrun, options.verbose )
+    else:
+       print("ERROR: ACL file: %s not found!" % ( options.acl_file ))
+
+def process_clear_command():
+    """
+    A --clear was specified, so lets clear out the ACLs.
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    for filename in args:
+        myacl = mmacls( filename )
+        if myacl.filename != None:
+           # Was a new user mask specified. If so, update it.
+           if options.user_mask:
+              myacl.update_user_perms( options.user_mask )
+
+           # Was a new group mask specified. If so, update it.
+           if options.group_mask:
+              myacl.update_group_perms( options.group_mask )
+
+           # Was a new other mask specified. If so, update it.
+           if options.other_mask:
+              myacl.update_other_perms( options.other_mask )
+
+           myacl.clear_acls()
+           temp_acl_file = get_temp_filename()
+           write_acl_file( temp_acl_file, myacl.acls )
+           set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
 
 if __name__ == '__main__':
    ( options, args ) = parse_options( sys.argv[1:] )
 
    if options.list:
-      for filename in args:
-          myacl = mmacls( filename )
-          if myacl.filename != None:
-             print("File: %s" % ( myacl.filename ))
-             myacl.dump_raw_acl()
-          else:
-             print("File: %s does not exist." % ( filename ))
+      process_list_command()
    elif options.set:
-      for filename in args:
-          myacl = mmacls( filename )
-          if myacl.filename != None:
-             if options.verbose:
-                 print("Processing: %s setting ACL to file: %s" % ( myacl.filename, options.acl_file ))
-             set_acl( myacl.filename, options.acl_file, options.dryrun, options.verbose )
+      process_set_command()
    elif options.clear:
-      for filename in args:
-          myacl = mmacls( filename )
-          if myacl.filename != None:
-             print("File: %s" % ( myacl.filename ))
-             myacl.clear_acls()
-             myacl.dump_mmacl()
-             temp_acl_file = get_temp_filename()
-             if options.verbose:
-                print("Temp ACL File: %s" % ( temp_acl_file ))
-             write_acl_file( temp_acl_file, myacl.acls )
-             set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
+      process_clear_command()
 
 
