@@ -110,7 +110,7 @@ def parse_options( argv ):
                          help = "Overwrite the current ACL of a file or directory. Default: %(default)s")
 
     parser.add_argument( "--del",
-                         dest = "del",
+                         dest = "delete",
                          default = False,
                          action = 'store_true',
                          help = "Delete the specified ACL from the file or directory. Default: %(default)s")
@@ -274,6 +274,59 @@ def process_clear_command():
            write_acl_file( temp_acl_file, myacl.acls )
            set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
 
+def process_add_acl():
+    """
+    An --add was specified. Lets get to work.
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    if options.acl_mask == None:
+       print('ERROR: An ACL mask was not specified. \nUsage: ssacl --add ',
+             '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
+       sys.exit(1)
+
+    for filename in args:
+        myacl = mmacls( filename )
+        if myacl.filename != None:
+           if options.uid:
+              myacl.add_user_acl( options.uid, options.acl_mask )
+           elif options.gid:
+              myacl.add_group_acl( options.gid, options.acl_mask )
+           else:
+              print('ERROR: Neither --uid or --gid was specified. \nUsage: ssacl --add ',
+                    '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
+              sys.exit(1)
+
+           temp_acl_file = get_temp_filename()
+           write_acl_file( temp_acl_file, myacl.acls )
+           set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
+
+
+def process_del_acl():
+    """
+    An --add was specified. Lets get to work.
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    for filename in args:
+        myacl = mmacls( filename )
+        if myacl.filename != None:
+           if options.uid:
+              myacl.del_user_acl( options.uid )
+           elif options.gid:
+              myacl.del_group_acl( options.gid )
+           else:
+              print('ERROR: Neither --uid or --gid was specified. \nUsage: ssacl --add ',
+                    '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
+              sys.exit(1)
+
+           temp_acl_file = get_temp_filename()
+           write_acl_file( temp_acl_file, myacl.acls )
+           set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
+
+
 if __name__ == '__main__':
    ( options, args ) = parse_options( sys.argv[1:] )
 
@@ -283,5 +336,9 @@ if __name__ == '__main__':
       process_set_command()
    elif options.clear:
       process_clear_command()
+   elif options.add:
+      process_add_acl()
+   elif options.delete:
+      process_del_acl()
 
 

@@ -67,8 +67,8 @@ class mmacls:
           print( "File: " + self.filename )
           print( "Directory: " + self.dirname )
           print( "ACL: " )
-          print( self.acls )
-          print( "Default ACL: " )
+          pprint.pprint( self.acls )
+          #print( "Default ACL: " )
           #print( self.default_acls )
 
       def dump_raw_acl( self ):
@@ -123,14 +123,17 @@ class mmacls:
                  mydict['OWNER'] = line.split(':')[1]
               elif '#group:' in line:
                  mydict['GROUP'] = line.split(':')[1]
-              elif 'user::' in line:
+              elif 'user:' in line:
                  if line.split(':')[1] == '':
                     mydict['USERP'] = line.split(':')[2]
                  else:
                     user_name=line.split(':')[1]
                     mydict['USERS'][user_name] = {}
                     mydict['USERS'][user_name]['PERMS']=line.split(':')[2][0:4]
-                    mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    if 'effective' in line:
+                       mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    else:
+                       mydict['USERS'][user_name]['EFFECTIVE']='????'
               elif 'group:' in line:
                  if line.split(':')[1] == '':
                     mydict['GROUPP'] = line.split(':')[2]
@@ -138,7 +141,10 @@ class mmacls:
                     group_name=line.split(':')[1]
                     mydict['GROUPS'][group_name] = {}
                     mydict['GROUPS'][group_name]['PERMS']=line.split(':')[2][0:4]
-                    mydict['GROUPS'][group_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    if 'effective' in line:
+                       mydict['GROUPS'][group_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    else:
+                       mydict['GROUPS'][group_name]['EFFECTIVE']='????'
               elif 'other::' in line:
                  mydict['OTHERP'] = line.split(':')[2]
               elif 'mask::' in line:
@@ -189,7 +195,10 @@ class mmacls:
                     user_name=line.split(':')[1]
                     mydict['USERS'][user_name] = {}
                     mydict['USERS'][user_name]['PERMS']=line.split(':')[2][0:4]
-                    mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    if 'effective' in line:
+                       mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    else:
+                       mydict['USERS'][user_name]['EFFECTIVE']='????'
               elif 'group:' in line:
                  if line.split(':')[1] == '':
                     mydict['GROUPP'] = line.split(':')[2]
@@ -197,12 +206,23 @@ class mmacls:
                     group_name=line.split(':')[1]
                     mydict['GROUPS'][group_name] = {}
                     mydict['GROUPS'][group_name]['PERMS']=line.split(':')[2][0:4]
-                    mydict['GROUPS'][group_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    if 'effective' in line:
+                       mydict['GROUPS'][group_name]['EFFECTIVE']=line.split(':')[3][1:5]
+                    else:
+                       mydict['GROUPS'][group_name]['EFFECTIVE']='????'
               elif 'other::' in line:
                  mydict['OTHERP'] = line.split(':')[2]
               elif 'mask::' in line:
                  mydict['MASK'] = line.split(':')[2]
           self.default_acls = mydict
+
+      def add_user_acl( self, username, mask ):
+          self.acls['USERS'][username] = {}
+          self.acls['USERS'][username]['PERMS'] = mask
+
+      def add_group_acl( self, groupname, mask ):
+          self.acls['GROUPS'][groupname] = {}
+          self.acls['GROUPS'][groupname]['PERMS'] = mask
 
       def update_user_perms( self, mask ):
           self.acls['USERP'] = mask
@@ -212,6 +232,18 @@ class mmacls:
 
       def update_other_perms( self, mask ):
           self.acls['OTHERP'] = mask
+
+      def del_user_acl( self, username ):
+          if username in self.acls['USERS'].keys():
+             del self.acls['USERS'][username]
+          else:
+             print("%s does not have a user ACL on %s" % ( username, self.filename ))
+
+      def del_group_acl( self, groupname ):
+          if groupname in self.acls['GROUPS'].keys():
+             del self.acls['GROUPS'][groupname]
+          else:
+             print("%s does not have a group ACL on %s" % ( groupname, self.filename ))
 
       def get_group_acl( self, group=None ):
           """
@@ -254,13 +286,13 @@ class mmacls:
 
       def debug_on( self ):
           """
-          Turn debug on.      
+          Turn debug on.
           """
           self.debug = True
 
       def debug_off( self ):
           """
-          Turn debug off.      
+          Turn debug off.
           """
           self.debug = False
 
@@ -275,13 +307,13 @@ class mmacls:
 
       def dryrun_on( self ):
           """
-          Turn dryrun on.      
+          Turn dryrun on.
           """
           self.dryrun = True
 
       def dryrun_off( self ):
           """
-          Turn dryrun off.      
+          Turn dryrun off.
           """
           self.dryrun = False
 
@@ -296,13 +328,13 @@ class mmacls:
 
       def verbose_on( self ):
           """
-          Turn verbose on.      
+          Turn verbose on.
           """
           self.verbose = True
 
       def verbose_off( self ):
           """
-          Turn verbose off.      
+          Turn verbose off.
           """
           self.verbose = False
 
