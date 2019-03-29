@@ -77,11 +77,26 @@ def parse_options( argv ):
                 - List the ACLs on a file
                 > ssacl --list /data/acl/testfile
 
+                - Set the ACL to the contents of a specified ACL file.
+                > ssacl --set -f acl.testfile /data/acl/testfile
+
                 - Add a user ACL to a file
-                > ssacl --add -u 29559 -a 'rwx-' /data/acl/testfile
+                > ssacl --add -u ckerner -a='rwx-' /data/acl/testfile
+
+                - Add a group ACL to a file
+                > ssacl --add -g nfsnobody -a='r-x-' /data/acl/testfile
 
                 - Clear the ACLs on a file
                 > ssacl --clear /data/acl/testfile
+
+                - Clear the ACLs on a file and reset the permissions to 760:
+                > ssacl --clear -U=rwxc --GID=r-x- -O=---- /data/acl/testfile
+
+                - Delete a user ACL to a file
+                > ssacl --del -u ckerner /data/acl/testfile
+
+                - Delete a group ACL to a file
+                > ssacl --del -g nfsnobody /data/acl/testfile
 
                 NOTE: This CLI requires IBM SpectrumScale to be installed in the default location.
 

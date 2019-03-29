@@ -72,4 +72,25 @@ user:ckerner:rw--
 group:rpcuser:r-x-
 group:nfsnobody:r---
 
+#-> ssacl --del -g rpcuser testfile
+#-> ssacl --del -g nfsnobody testfile
+#-> ssacl --list testfile
+File: /data/acl/testfile
+#owner:root
+#group:root
+user::rwxc
+group::r-x-
+other::----
+mask::rwxc
+user:ckerner:rw--
+
+#-> ssacl --del -u ckerner testfile
+#-> ssacl --list testfile
+File: /data/acl/testfile
+#owner:root
+#group:root
+user::rwxc
+group::r-x-
+other::----
+mask::rwxc
 
