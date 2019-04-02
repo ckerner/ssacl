@@ -78,6 +78,13 @@ class mmacls:
               print( line )
           print("")
 
+      def dump_raw_default_acl( self ):
+          cmd = MMGETACL + '-d ' + self.filename
+          output = run_cmd( cmd )
+          for line in output.splitlines():
+              print( line )
+          print("")
+
       def clear_acls( self ):
           if 'MASK' in self.acls:
              del self.acls['MASK']
