@@ -228,6 +228,14 @@ class mmacls:
           self.acls['GROUPS'][groupname] = {}
           self.acls['GROUPS'][groupname]['PERMS'] = mask
 
+      def add_default_user_acl( self, username, mask ):
+          self.default_acls['USERS'][username] = {}
+          self.default_acls['USERS'][username]['PERMS'] = mask
+
+      def add_default_group_acl( self, groupname, mask ):
+          self.default_acls['GROUPS'][groupname] = {}
+          self.default_acls['GROUPS'][groupname]['PERMS'] = mask
+
       def update_user_perms( self, mask ):
           self.acls['USERP'] = mask
 

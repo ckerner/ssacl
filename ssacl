@@ -339,6 +339,13 @@ def process_add_acl():
     for filename in args:
         myacl = mmacls( filename )
         if myacl.filename != None:
+           if options.default:
+              myacl.get_default_acl()
+              if options.uid != None:
+                 myacl.add_default_user_acl( options.uid, options.acl_mask )
+              if options.gid != None:
+                 myacl.add_default_group_acl( options.gid, options.acl_mask )
+
            if options.uid:
               myacl.add_user_acl( options.uid, options.acl_mask )
            elif options.gid:
@@ -352,7 +359,9 @@ def process_add_acl():
            write_acl_file( temp_acl_file, myacl.acls )
            set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
            if options.default:
-              set_default_acl( myacl.dirname, temp_acl_file, options.dryrun, options.verbose )
+              temp_default_acl_file = get_temp_filename()
+              write_acl_file( temp_default_acl_file, myacl.default_acls )
+              set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 
 def process_del_acl():
@@ -385,7 +394,9 @@ def process_del_acl():
            write_acl_file( temp_acl_file, myacl.acls )
            set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
            if options.default:
-              set_default_acl( myacl.dirname, temp_acl_file, options.dryrun, options.verbose )
+              temp_default_acl_file = get_temp_filename()
+              write_acl_file( temp_default_acl_file, myacl.default_acls )
+              set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 
 if __name__ == '__main__':
