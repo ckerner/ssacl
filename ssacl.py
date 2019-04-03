@@ -40,6 +40,26 @@ DRYRUN = 0
 MMGETACL = '/usr/lpp/mmfs/bin/mmgetacl '
 MMPUTACL = '/usr/lpp/mmfs/bin/mmputacl '
 
+"""
+ACL Dictionary Structure:
+    acl[FQPN]   - Fully qualified pathname of the file.
+    acl[TYPE]   - f for file and D for directories
+    acl[OWNER]  - Owner of the file
+    acl[GROUP]  - Group of the file
+    acl[USERP]  - User permissions
+    acl[GROUPP] - Group permissions
+    acl[OTHERP] - Other permissions
+    acl[MASK]   - File mask
+    acl[USERS]
+          [USER]
+             [PERMS]
+             [EFFECTIVE]
+    acl[GROUPS]
+          [GROUP]
+             [PERMS]
+             [EFFECTIVE]
+"""
+
 class mmacls:
       """
       This class will handle the manipulation of the SpectrumScale ACLs
@@ -78,6 +98,13 @@ class mmacls:
               print( line )
           print("")
 
+      def dump_raw_default_acl( self ):
+          cmd = MMGETACL + '-d ' + self.filename
+          output = run_cmd( cmd )
+          for line in output.splitlines():
+              print( line )
+          print("")
+
       def clear_acls( self ):
           if 'MASK' in self.acls:
              del self.acls['MASK']
@@ -86,34 +113,27 @@ class mmacls:
           if 'GROUPS' in self.acls:
              del self.acls['GROUPS']
 
+      def clear_default_acls( self ):
+          if 'MASK' in self.default_acls:
+             del self.default_acls['MASK']
+          if 'USERS' in self.default_acls:
+             del self.default_acls['USERS']
+          if 'GROUPS' in self.default_acls:
+             del self.default_acls['GROUPS']
+
       def get_acl( self ):
           """
           Fetch the file ACLs and return them in a dict.
 
           :param fnam: The name of the file or directory to get the ACLs on.
-          :return: Returns a dict with the following information:
-                   acl[FQPN] - Fully qualified pathname of the file.
-                   acl[TYPE] - f for file and D for directories
-                   acl[OWNER] - Owner of the file
-                   acl[GROUP] - Group of the file
-                   acl[USERP] - User permissions
-                   acl[GROUPP] - Group permissions
-                   acl[OTHERP] - Other permissions
-                   acl[MASK] - File mask
-                   acl[USERS]
-                         [USER]
-                             [PERMS]
-                             [EFFECTIVE]
-                   acl[GROUPS]
-                         [GROUP]
-                             [PERMS]
-                             [EFFECTIVE]
+          :return: Returns a dict with the ACL information.
           """
 
           mydict = {}
           mydict['GROUPS'] = {}
           mydict['USERS'] = {}
           mydict['FQPN'] = self.filename
+          mydict['DIRNAME'] = self.dirname
 
           cmd = MMGETACL + '"' + self.filename + '"'
           output = run_cmd( cmd )
@@ -156,23 +176,7 @@ class mmacls:
           Fetch the file ACLs and return them in a dict.
 
           :param fnam: The name of the file or directory to get the ACLs on.
-          :return: Returns a dict with the following information:
-                   acl[FQPN] - Fully qualified pathname of the file.
-                   acl[TYPE] - f for file and D for directories
-                   acl[OWNER] - Owner of the file
-                   acl[GROUP] - Group of the file
-                   acl[USERP] - User permissions
-                   acl[GROUPP] - Group permissions
-                   acl[OTHERP] - Other permissions
-                   acl[MASK] - File mask
-                   acl[USERS]
-                         [USER]
-                             [PERMS]
-                             [EFFECTIVE]
-                   acl[GROUPS]
-                         [GROUP]
-                             [PERMS]
-                             [EFFECTIVE]
+          :return: Returns a dict with the ACL information.
           """
 
           mydict = {}
@@ -188,7 +192,7 @@ class mmacls:
                  mydict['OWNER'] = line.split(':')[1]
               elif '#group:' in line:
                  mydict['GROUP'] = line.split(':')[1]
-              elif 'user::' in line:
+              elif line.startswith('user:'):
                  if line.split(':')[1] == '':
                     mydict['USERP'] = line.split(':')[2]
                  else:
@@ -199,7 +203,7 @@ class mmacls:
                        mydict['USERS'][user_name]['EFFECTIVE']=line.split(':')[3][1:5]
                     else:
                        mydict['USERS'][user_name]['EFFECTIVE']='????'
-              elif 'group:' in line:
+              elif line.startswith('group:'):
                  if line.split(':')[1] == '':
                     mydict['GROUPP'] = line.split(':')[2]
                  else:
@@ -224,6 +228,14 @@ class mmacls:
           self.acls['GROUPS'][groupname] = {}
           self.acls['GROUPS'][groupname]['PERMS'] = mask
 
+      def add_default_user_acl( self, username, mask ):
+          self.default_acls['USERS'][username] = {}
+          self.default_acls['USERS'][username]['PERMS'] = mask
+
+      def add_default_group_acl( self, groupname, mask ):
+          self.default_acls['GROUPS'][groupname] = {}
+          self.default_acls['GROUPS'][groupname]['PERMS'] = mask
+
       def update_user_perms( self, mask ):
           self.acls['USERP'] = mask
 
@@ -233,15 +245,36 @@ class mmacls:
       def update_other_perms( self, mask ):
           self.acls['OTHERP'] = mask
 
+      def update_default_user_perms( self, mask ):
+          self.default_acls['USERP'] = mask
+
+      def update_default_group_perms( self, mask ):
+          self.default_acls['GROUPP'] = mask
+
+      def update_default_other_perms( self, mask ):
+          self.default_acls['OTHERP'] = mask
+
       def del_user_acl( self, username ):
           if username in self.acls['USERS'].keys():
-             del self.acls['USERS'][username]
+             del self.default_acls['USERS'][username]
           else:
              print("%s does not have a user ACL on %s" % ( username, self.filename ))
 
       def del_group_acl( self, groupname ):
           if groupname in self.acls['GROUPS'].keys():
              del self.acls['GROUPS'][groupname]
+          else:
+             print("%s does not have a group ACL on %s" % ( groupname, self.filename ))
+
+      def del_default_user_acl( self, username ):
+          if username in self.default_acls['USERS'].keys():
+             del self.default_acls['USERS'][username]
+          else:
+             print("%s does not have a user ACL on %s" % ( username, self.filename ))
+
+      def del_default_group_acl( self, groupname ):
+          if groupname in self.default_acls['GROUPS'].keys():
+             del self.default_acls['GROUPS'][groupname]
           else:
              print("%s does not have a group ACL on %s" % ( groupname, self.filename ))
 
@@ -265,6 +298,7 @@ class mmacls:
              else:
                 return '----'
 
+<<<<<<< HEAD
 
       def set_default_acl( self, aclfile=None ):
           cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + self.filename + '"'
@@ -284,6 +318,8 @@ class mmacls:
                 print( cmd )
              run_cmd( cmd )
 
+=======
+>>>>>>> b2d9f5bc32fe13561b4e9633801013c99d319edc
       def debug_on( self ):
           """
           Turn debug on.
