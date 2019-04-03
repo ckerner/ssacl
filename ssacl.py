@@ -72,7 +72,7 @@ class mmacls:
           #print( self.default_acls )
 
       def dump_raw_acl( self ):
-          cmd = MMGETACL + self.filename
+          cmd = MMGETACL + '"' + self.filename + '"'
           output = run_cmd( cmd )
           for line in output.splitlines():
               print( line )
@@ -115,7 +115,7 @@ class mmacls:
           mydict['USERS'] = {}
           mydict['FQPN'] = self.filename
 
-          cmd = MMGETACL + self.filename
+          cmd = MMGETACL + '"' + self.filename + '"'
           output = run_cmd( cmd )
 
           for line in output.splitlines():
@@ -180,7 +180,7 @@ class mmacls:
           mydict['USERS'] = {}
           mydict['FQPN'] = self.dirname
 
-          cmd = MMGETACL + '-d ' + self.dirname
+          cmd = MMGETACL + '-d ' + '"' + self.dirname + '"'
           output = run_cmd( cmd )
 
           for line in output.splitlines():
@@ -267,7 +267,7 @@ class mmacls:
 
 
       def set_default_acl( self, aclfile=None ):
-          cmd = MMPUTACL + '-d -i ' + aclfile + ' ' + self.filename
+          cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + self.filename + '"'
           if self.dryrun:
              print( cmd )
           else:
@@ -276,7 +276,7 @@ class mmacls:
              run_cmd( cmd )
 
       def set_acl( self, aclfile=None ):
-          cmd = MMPUTACL + '-i ' + aclfile + ' ' + self.filename
+          cmd = MMPUTACL + '-i ' + aclfile + ' "' + self.filename + '"'
           if self.dryrun:
              print( cmd )
           else:
@@ -410,7 +410,7 @@ def write_acl_file( aclfile=None, myacls=None ):
     fd.close()
 
 def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
-    cmd = MMPUTACL + '-d -i ' + aclfile + ' ' + filename
+    cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + filename + '"'
     if dryrun:
        print( cmd )
     else:
@@ -419,7 +419,7 @@ def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
        run_cmd( cmd )
 
 def set_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
-    cmd = MMPUTACL + '-i ' + aclfile + ' ' + filename
+    cmd = MMPUTACL + '-i ' + aclfile + ' "' + filename + '"'
     if dryrun:
        print( cmd )
     else:
