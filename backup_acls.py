@@ -15,7 +15,6 @@ If you find a bug, fix it.  Then, send me the diff and I'll merge it into the co
 """
 
 from __future__ import print_function
-import ldap
 import sys
 import os
 import pprint
@@ -45,7 +44,7 @@ def parse_options( argv ):
                                      prog = 'backup_acls.py',
                                      description = textwrap.dedent('''\
                                              backup_acls.py - Backup the ACLs on the files in the cluster
-                              
+
                                              '''),
                                      epilog = textwrap.dedent('''\
 
