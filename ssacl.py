@@ -32,6 +32,7 @@ from subprocess import Popen, PIPE
 import sys
 import os
 import shlex
+import json
 from stat import *
 from tempfile import mkstemp
 import pprint
@@ -69,6 +70,7 @@ class mmacls:
           self.debug = False
           self.dryrun = False
           self.verbose = False
+          self.is_file = True
           self.fname = fname
           try:
              self.filename = os.path.abspath( fname )
@@ -78,6 +80,7 @@ class mmacls:
              return None
           if S_ISDIR(self.stats[ST_MODE]):
              self.dirname = self.filename
+             self.is_file = False
           else:
              self.dirname = os.path.dirname( self.filename )
           self.get_acl()
@@ -298,8 +301,6 @@ class mmacls:
              else:
                 return '----'
 
-<<<<<<< HEAD
-
       def set_default_acl( self, aclfile=None ):
           cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + self.filename + '"'
           if self.dryrun:
@@ -318,8 +319,6 @@ class mmacls:
                 print( cmd )
              run_cmd( cmd )
 
-=======
->>>>>>> b2d9f5bc32fe13561b4e9633801013c99d319edc
       def debug_on( self ):
           """
           Turn debug on.
@@ -463,6 +462,9 @@ def set_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
           print( cmd )
        run_cmd( cmd )
 
+def return_json( theacl=None ):
+    if theacl != None:
+       return json.dumps( theacl )
 
 
 if __name__ == '__main__':
@@ -471,6 +473,7 @@ if __name__ == '__main__':
    if a.filename:
       print("\nDump The Class Info:")
       a.dump_mmacl()
+      print('ACL: %s' % ( return_json(a.acls) ) )
    else:
       print("File: %s does not exist." % ( a.fname ) )
 

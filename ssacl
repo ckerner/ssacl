@@ -98,6 +98,10 @@ def parse_options( argv ):
                 - Delete a group ACL to a file
                 > ssacl --del -g nfsnobody /data/acl/testfile
 
+                - Dump the ACLs in JSON format for use as a backup. If a directory is specified, the
+                  default ACL for the directory is dumped as well.
+                > ssacl --json /data/acl/testfile
+
                 NOTE: This CLI requires IBM SpectrumScale to be installed in the default location.
 
                 Chad Kerner - ckerner@illinois.edu
@@ -141,6 +145,12 @@ def parse_options( argv ):
                          default = False,
                          action = 'store_true',
                          help = "Clear all default ACLs from a file or directory. Default: %(default)s")
+
+    parser.add_argument( "-j", "--json",
+                         dest = "json",
+                         default = False,
+                         action = 'store_true',
+                         help = "Dump the ACLs in JSON format. Default: %(default)s")
 
     parser.add_argument( "-f",
                          dest = "acl_file",
@@ -233,6 +243,23 @@ def get_temp_filename():
 
     tf = tempfile.NamedTemporaryFile()
     return tf.name
+
+def process_json_command():
+    """
+    A --json was specified, so lets dump the ACLs in JSON format.
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    for filename in args:
+        myacl = mmacls( filename )
+        if myacl.filename != None:
+           print('ACL: %s' % ( return_json(myacl.acls) ) )
+           if myacl.is_file == False:
+              myacl.get_default_acl()
+              print('DACL: %s' % ( return_json(myacl.default_acls) ) )
+        else:
+           print("File: %s does not exist." % ( filename ))
 
 def process_list_command():
     """
@@ -412,5 +439,7 @@ if __name__ == '__main__':
       process_add_acl()
    elif options.delete:
       process_del_acl()
+   elif options.json:
+      process_json_command()
 
 
