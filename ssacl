@@ -265,25 +265,16 @@ def walk_directory_tree( topdir, file_callback, directory_callback ):
        else:
           print("Skipping: %s " % ( pathname ) )
 
-def json_file_worker( filename ):
+def json_worker( filename ):
     if options.debug:
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
     myacl = mmacls( filename )
     if myacl.filename != None:
        print('ACL: %s' % ( return_json(myacl.acls) ) )
-    else:
-       print("FQPN: %s does not exist." % ( filename ))
-
-def json_directory_worker( filename ):
-    if options.debug:
-       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
-
-    myacl = mmacls( filename )
-    if myacl.filename != None:
-       print('ACL: %s' % ( return_json(myacl.acls) ) )
-       myacl.get_default_acl()
-       print('DACL: %s' % ( return_json(myacl.default_acls) ) )
+       if myacl.is_file == False:
+          myacl.get_default_acl()
+          print('DACL: %s' % ( return_json(myacl.default_acls) ) )
     else:
        print("FQPN: %s does not exist." % ( filename ))
 
@@ -297,9 +288,9 @@ def process_json_command():
     for filename in args:
         mode = os.stat( filename )[ST_MODE]
         if S_ISDIR(mode):
-           walk_directory_tree( filename, json_file_worker, json_directory_worker )
+           walk_directory_tree( filename, json_worker, json_worker )
         else:
-           json_file_worker( filename )
+           json_worker( filename )
 
 
 def process_list_command():
