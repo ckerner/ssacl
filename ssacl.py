@@ -395,8 +395,8 @@ def run_cmd( cmdstr=None ):
     cmd = shlex.split(cmdstr)
     subp = Popen(cmd, stdout=PIPE, stderr=PIPE)
     (outdata, errdata) = subp.communicate()
-    if subp.returncode == 22:
-       return( 'File is not in gpfs.' )
+#    if subp.returncode == 22:
+#       return( 'File is not in gpfs.' )
     if subp.returncode != 0:
        msg = "Error\n Command: {0}\n Message: {1}".format(cmdstr,errdata)
        raise UserWarning( msg )

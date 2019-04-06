@@ -288,10 +288,26 @@ def process_json_command():
     for filename in args:
         mode = os.stat( filename )[ST_MODE]
         if S_ISDIR(mode):
+           json_worker( filename )
            walk_directory_tree( filename, json_worker, json_worker )
         else:
            json_worker( filename )
 
+def list_worker( filename ):
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    myacl = mmacls( filename )
+    if myacl.filename != None:
+       print('File: %s' % ( myacl.filename ) )
+       myacl.dump_raw_acl()
+       if myacl.is_file == False:
+          if options.default:
+             print('Default ACL: %s' % ( myacl.dirname ) )
+             myacl.get_default_acl()
+             myacl.dump_raw_default_acl()
+    else:
+       print("FQPN: %s does not exist." % ( filename ))
 
 def process_list_command():
     """
@@ -301,12 +317,26 @@ def process_list_command():
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
     for filename in args:
-        myacl = mmacls( filename )
-        if myacl.filename != None:
-           print("File: %s" % ( myacl.filename ))
-           myacl.dump_raw_acl()
+        mode = os.stat( filename )[ST_MODE]
+        if S_ISDIR(mode):
+           list_worker( filename )
+           walk_directory_tree( filename, list_worker, list_worker )
         else:
-           print("File: %s does not exist." % ( filename ))
+           list_worker( filename )
+
+def set_worker( filename ):
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    myacl = mmacls( filename )
+    if myacl.filename != None:
+       if options.verbose:
+          print("Processing: %s setting ACL to file: %s" % ( myacl.filename, options.acl_file ))
+       set_acl( myacl.filename, options.acl_file, options.dryrun, options.verbose )
+
+       if myacl.is_file == False:
+          if options.default:
+             set_default_acl( myacl.filename, options.acl_file, options.dryrun, options.verbose )
 
 def process_set_command():
     """
@@ -319,13 +349,55 @@ def process_set_command():
        print("ERROR: ACL file not specified! \nUsage: ssacl --set -f <ACL File> [ FILE1, FILE2, ....]")
     elif os.path.isfile( os.path.abspath( options.acl_file )):
        for filename in args:
-           myacl = mmacls( filename )
-           if myacl.filename != None:
-              if options.verbose:
-                  print("Processing: %s setting ACL to file: %s" % ( myacl.filename, options.acl_file ))
-              set_acl( myacl.filename, options.acl_file, options.dryrun, options.verbose )
+           mode = os.stat( filename )[ST_MODE]
+           if S_ISDIR(mode):
+              set_worker( filename )
+              walk_directory_tree( filename, set_worker, set_worker )
+           else:
+              set_worker( filename )
     else:
        print("ERROR: ACL file: %s not found!" % ( options.acl_file ))
+
+def clear_worker( filename ):
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    myacl = mmacls( filename )
+    if myacl.filename != None:
+       # Was a new user mask specified. If so, update it.
+       if options.user_mask:
+          myacl.update_user_perms( options.user_mask )
+
+       # Was a new group mask specified. If so, update it.
+       if options.group_mask:
+          myacl.update_group_perms( options.group_mask )
+
+       # Was a new other mask specified. If so, update it.
+       if options.other_mask:
+          myacl.update_other_perms( options.other_mask )
+
+       myacl.clear_acls()
+       temp_acl_file = get_temp_filename()
+       write_acl_file( temp_acl_file, myacl.acls )
+       set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
+       if options.default:
+          myacl.get_default_acl()
+          # Was a new user mask specified. If so, update it.
+          if options.user_mask:
+             myacl.update_default_user_perms( options.user_mask )
+
+          # Was a new group mask specified. If so, update it.
+          if options.group_mask:
+             myacl.update_default_group_perms( options.group_mask )
+
+          # Was a new other mask specified. If so, update it.
+          if options.other_mask:
+             myacl.update_default_other_perms( options.other_mask )
+
+          myacl.clear_default_acls()
+          temp_default_acl_file = get_temp_filename()
+          write_acl_file( temp_default_acl_file, myacl.default_acls )
+          set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 def process_clear_command():
     """
@@ -335,53 +407,39 @@ def process_clear_command():
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
     for filename in args:
-        myacl = mmacls( filename )
-        if myacl.filename != None:
-           # Was a new user mask specified. If so, update it.
-           if options.user_mask:
-              myacl.update_user_perms( options.user_mask )
+        mode = os.stat( filename )[ST_MODE]
+        if S_ISDIR(mode):
+           clear_worker( filename )
+           walk_directory_tree( filename, clear_worker, clear_worker )
+        else:
+           clear_worker( filename )
 
-           # Was a new group mask specified. If so, update it.
-           if options.group_mask:
-              myacl.update_group_perms( options.group_mask )
-
-           # Was a new other mask specified. If so, update it.
-           if options.other_mask:
-              myacl.update_other_perms( options.other_mask )
-
-           myacl.clear_acls()
-           temp_acl_file = get_temp_filename()
-           write_acl_file( temp_acl_file, myacl.acls )
-           set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
-
-def process_clear_default_command():
-    """
-    A --clear was specified, so lets clear out the ACLs.
-    """
+def add_worker( filename ):
     if options.debug:
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
-    for filename in args:
-        myacl = mmacls( filename )
-        if myacl.filename != None:
+    myacl = mmacls( filename )
+    if myacl.filename != None:
 
-           myacl.get_default_acl()
-           # Was a new user mask specified. If so, update it.
-           if options.user_mask:
-              myacl.update_default_user_perms( options.user_mask )
+       if options.uid:
+          myacl.add_user_acl( options.uid, options.acl_mask )
+       if options.gid:
+          myacl.add_group_acl( options.gid, options.acl_mask )
 
-           # Was a new group mask specified. If so, update it.
-           if options.group_mask:
-              myacl.update_default_group_perms( options.group_mask )
+       temp_acl_file = get_temp_filename()
+       write_acl_file( temp_acl_file, myacl.acls )
+       set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
 
-           # Was a new other mask specified. If so, update it.
-           if options.other_mask:
-              myacl.update_default_other_perms( options.other_mask )
+       if options.default:
+          myacl.get_default_acl()
+          if options.uid != None:
+             myacl.add_default_user_acl( options.uid, options.acl_mask )
+          if options.gid != None:
+             myacl.add_default_group_acl( options.gid, options.acl_mask )
 
-           myacl.clear_default_acls()
-           temp_acl_file = get_temp_filename()
-           write_acl_file( temp_acl_file, myacl.default_acls )
-           set_default_acl( myacl.dirname, temp_acl_file, options.dryrun, options.verbose )
+          temp_default_acl_file = get_temp_filename()
+          write_acl_file( temp_default_acl_file, myacl.default_acls )
+          set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 def process_add_acl():
     """
@@ -395,32 +453,45 @@ def process_add_acl():
              '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
        sys.exit(1)
 
+    if options.uid == None and options.gid == None:
+       print('ERROR: Neither --uid or --gid was specified. \nUsage: ssacl --add ',
+             '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
+       sys.exit(1)
+
     for filename in args:
-        myacl = mmacls( filename )
-        if myacl.filename != None:
-           if options.default:
-              myacl.get_default_acl()
-              if options.uid != None:
-                 myacl.add_default_user_acl( options.uid, options.acl_mask )
-              if options.gid != None:
-                 myacl.add_default_group_acl( options.gid, options.acl_mask )
+        mode = os.stat( filename )[ST_MODE]
+        if S_ISDIR(mode):
+           add_worker( filename )
+           walk_directory_tree( filename, add_worker, add_worker )
+        else:
+           add_worker( filename )
 
-           if options.uid:
-              myacl.add_user_acl( options.uid, options.acl_mask )
-           elif options.gid:
-              myacl.add_group_acl( options.gid, options.acl_mask )
-           else:
-              print('ERROR: Neither --uid or --gid was specified. \nUsage: ssacl --add ',
-                    '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
-              sys.exit(1)
+def del_worker( filename ):
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
-           temp_acl_file = get_temp_filename()
-           write_acl_file( temp_acl_file, myacl.acls )
-           set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
-           if options.default:
-              temp_default_acl_file = get_temp_filename()
-              write_acl_file( temp_default_acl_file, myacl.default_acls )
-              set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
+    myacl = mmacls( filename )
+    if myacl.filename != None:
+
+       if options.uid != None:
+          myacl.del_user_acl( options.uid )
+       if options.gid != None:
+          myacl.del_group_acl( options.gid )
+
+       temp_acl_file = get_temp_filename()
+       write_acl_file( temp_acl_file, myacl.acls )
+       set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
+
+       if options.default:
+          myacl.get_default_acl()
+          if options.uid != None:
+             myacl.del_default_user_acl( options.uid )
+          elif options.gid != None:
+             myacl.del_default_group_acl( options.gid )
+
+          temp_default_acl_file = get_temp_filename()
+          write_acl_file( temp_default_acl_file, myacl.default_acls )
+          set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 
 def process_del_acl():
@@ -430,32 +501,18 @@ def process_del_acl():
     if options.debug:
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
+    if options.uid == None and options.gid == None:
+       print('ERROR: Neither --uid or --gid was specified. \nUsage: ssacl --add ',
+             '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
+       sys.exit(1)
+
     for filename in args:
-        myacl = mmacls( filename )
-        if myacl.filename != None:
-           if options.default:
-              myacl.get_default_acl()
-              if options.uid != None:
-                 myacl.del_default_user_acl( options.uid )
-              elif options.gid != None:
-                 myacl.del_default_group_acl( options.gid )
-
-           if options.uid != None:
-              myacl.del_user_acl( options.uid )
-           elif options.gid != None:
-              myacl.del_group_acl( options.gid )
-           else:
-              print('ERROR: Neither --uid or --gid was specified. \nUsage: ssacl --add ',
-                    '[ -u UID | -g GID ] -a=ACL [ FILE1, FILE2, ....]')
-              sys.exit(1)
-
-           temp_acl_file = get_temp_filename()
-           write_acl_file( temp_acl_file, myacl.acls )
-           set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
-           if options.default:
-              temp_default_acl_file = get_temp_filename()
-              write_acl_file( temp_default_acl_file, myacl.default_acls )
-              set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
+        mode = os.stat( filename )[ST_MODE]
+        if S_ISDIR(mode):
+           del_worker( filename )
+           walk_directory_tree( filename, del_worker, del_worker )
+        else:
+           del_worker( filename )
 
 
 if __name__ == '__main__':
