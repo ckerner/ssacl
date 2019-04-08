@@ -4,9 +4,9 @@ SpectrumScale ACL Module
 This module is to allow for the easy maintenance of ACLs in
 the SpectrumScale file system.
 
-ssacl - command line interface examples:
-
-- List the ACLs on a file:
+ssacl - command line interface examples: 
+ 
+- List the ACLs on a file: 
 
 #-> ssacl --list ./testfile 
 File: /data/acl/testfile 
