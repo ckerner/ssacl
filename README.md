@@ -1,7 +1,7 @@
 # ssacl
 SpectrumScale ACL Module
 
-This module is to allow for the easy maintenance of ACLs in
+This module is to allow for the easy maintenance of POSIX ACLs in
 the SpectrumScale file system.
 
 ssacl - command line interface examples: 
