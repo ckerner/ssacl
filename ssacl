@@ -212,6 +212,12 @@ def parse_options( argv ):
                          action = 'store_true',
                          help = "Apply the ACL as a default to the files and/or directories. Default: %(default)s")
 
+    parser.add_argument( "--file",
+                         dest = "input_file",
+                         default = None,
+                         action = 'store',
+                         help = "The name of a text file containing the file names, 1 per line, to modify. Default: %(default)s")
+
     parser.add_argument( "--dry-run",
                          dest = "dryrun",
                          default = False,
@@ -266,6 +272,13 @@ def walk_directory_tree( topdir, file_callback, directory_callback ):
           print("Skipping: %s " % ( pathname ) )
 
 def json_worker( filename ):
+    """
+    Fetch the file ACLs and return them in a dict.
+
+    :param filename: The name of the file or directory to print the ACLs on in JSON format.
+    :return: Nothing
+    """
+
     if options.debug:
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
@@ -359,6 +372,10 @@ def process_set_command():
        print("ERROR: ACL file: %s not found!" % ( options.acl_file ))
 
 def clear_worker( filename ):
+    """
+    This is the worker function for clearing the ACLs.  It is called by the walk_directory_tree
+    routine for the recursion.  This is also useful if the script is ever parallelized.
+    """
     if options.debug:
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
