@@ -224,28 +224,67 @@ class mmacls:
           self.default_acls = mydict
 
       def add_user_acl( self, username, mask ):
+          """
+          Add the specified user into the object ACL.
+
+          :param: user name / uid
+          :param: ACL mask
+          """
           self.acls['USERS'][username] = {}
           self.acls['USERS'][username]['PERMS'] = mask
 
       def add_group_acl( self, groupname, mask ):
+          """
+          Add the specified group into the object ACL.
+
+          :param: group name / gid
+          :param: ACL mask
+          """
           self.acls['GROUPS'][groupname] = {}
           self.acls['GROUPS'][groupname]['PERMS'] = mask
 
       def add_default_user_acl( self, username, mask ):
+          """
+          Add the specified user into the object default ACL.
+
+          :param: user name / uid
+          :param: ACL mask
+          """
           self.default_acls['USERS'][username] = {}
           self.default_acls['USERS'][username]['PERMS'] = mask
 
       def add_default_group_acl( self, groupname, mask ):
+          """
+          Add the specified group into the object default ACL.
+
+          :param: group name / gid
+          :param: ACL mask
+          """
           self.default_acls['GROUPS'][groupname] = {}
           self.default_acls['GROUPS'][groupname]['PERMS'] = mask
 
       def update_user_perms( self, mask ):
+          """
+          Update the POSIX user permissions.
+
+          :param: ACL mask
+          """
           self.acls['USERP'] = mask
 
       def update_group_perms( self, mask ):
+          """
+          Update the POSIX group permissions.
+
+          :param: ACL mask
+          """
           self.acls['GROUPP'] = mask
 
       def update_other_perms( self, mask ):
+          """
+          Update the POSIX other permissions.
+
+          :param: ACL mask
+          """
           self.acls['OTHERP'] = mask
 
       def update_default_user_perms( self, mask ):
@@ -258,24 +297,44 @@ class mmacls:
           self.default_acls['OTHERP'] = mask
 
       def del_user_acl( self, username ):
+          """
+          Remove a user ACL from the current ACL list.
+
+          :param: A username / uid for the user to remove.
+          """
           if username in self.acls['USERS'].keys():
              del self.default_acls['USERS'][username]
           else:
              print("%s does not have a user ACL on %s" % ( username, self.filename ))
 
       def del_group_acl( self, groupname ):
+          """
+          Remove a group ACL from the current ACL list.
+
+          :param: A group / gid for the user to remove.
+          """
           if groupname in self.acls['GROUPS'].keys():
              del self.acls['GROUPS'][groupname]
           else:
              print("%s does not have a group ACL on %s" % ( groupname, self.filename ))
 
       def del_default_user_acl( self, username ):
+          """
+          Remove a user ACL from the current default ACL list.
+
+          :param: A username / uid for the user to remove.
+          """
           if username in self.default_acls['USERS'].keys():
              del self.default_acls['USERS'][username]
           else:
              print("%s does not have a user ACL on %s" % ( username, self.filename ))
 
       def del_default_group_acl( self, groupname ):
+          """
+          Remove a group ACL from the current default ACL list.
+
+          :param: A group / gid for the user to remove.
+          """
           if groupname in self.default_acls['GROUPS'].keys():
              del self.default_acls['GROUPS'][groupname]
           else:
@@ -302,6 +361,13 @@ class mmacls:
                 return '----'
 
       def set_default_acl( self, aclfile=None ):
+          """
+          This function will set the default acl of the currently specified file directory to the
+          contents of the file specified in the function call.
+
+          :param: A string containing the fully qualified path to the ACL file.
+          :return: Nothing
+          """
           cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + self.filename + '"'
           if self.dryrun:
              print( cmd )
@@ -311,6 +377,13 @@ class mmacls:
              run_cmd( cmd )
 
       def set_acl( self, aclfile=None ):
+          """
+          This function will set the acl of the currently specified file or directory to the
+          contents of the file specified in the function call.
+
+          :param: A string containing the fully qualified path to the ACL file.
+          :return: Nothing
+          """
           cmd = MMPUTACL + '-i ' + aclfile + ' "' + self.filename + '"'
           if self.dryrun:
              print( cmd )
@@ -445,6 +518,14 @@ def write_acl_file( aclfile=None, myacls=None ):
     fd.close()
 
 def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
+    """
+    This function will set the default ACL on a directory to the contents of the specified ACL file.
+
+    :param: A fully qualified pathname to the file or directory on which to set the ACL.
+    :param: A fully qualified pathname to the ACL file to use.
+    :param: Execute in dry-run mode. True or False. Default: False
+    :param: Execute in verbose mode. True or False. Default: False
+    """
     cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + filename + '"'
     if dryrun:
        print( cmd )
@@ -454,6 +535,14 @@ def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
        run_cmd( cmd )
 
 def set_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
+    """
+    This function will set the ACL on a directory to the contents of the specified ACL file.
+
+    :param: A fully qualified pathname to the file or directory on which to set the ACL.
+    :param: A fully qualified pathname to the ACL file to use.
+    :param: Execute in dry-run mode. True or False. Default: False
+    :param: Execute in verbose mode. True or False. Default: False
+    """
     cmd = MMPUTACL + '-i ' + aclfile + ' "' + filename + '"'
     if dryrun:
        print( cmd )
@@ -463,6 +552,12 @@ def set_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
        run_cmd( cmd )
 
 def return_json( theacl=None ):
+    """
+    Given a dictionary, return the dictionary in JSON format.
+
+    :param: A variable that contains a dictionary.
+    :return: A string containing the dictionary in JSON format.
+    """
     if theacl != None:
        return json.dumps( theacl )
 

@@ -13,7 +13,7 @@ Storage Enabling Technologies
 National Center for Supercomputing Applications
 ckerner@illinois.edu     chad.kerner@gmail.com
 
-This command line interface was to make it easy to modify the ACLs. And it 
+This command line interface was to make it easy to modify the ACLs. And it
 becomes more trivial with the python class to handle it.
 
 There is NO support, use it at your own risk.  Although I have not coded
@@ -25,7 +25,7 @@ the code.
 You may want to pull often because this is being updated quite frequently as
 our needs arise in our clusters.
 """
-  
+
 from __future__ import print_function
 import sys
 import os
