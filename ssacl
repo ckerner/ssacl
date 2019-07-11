@@ -263,9 +263,10 @@ def walk_directory_tree( topdir, file_callback, directory_callback ):
        mode = os.stat( pathname )[ST_MODE]
 
        if S_ISDIR(mode):
-          directory_callback( pathname )
-          if options.recursive:
-             walk_directory_tree( pathname, file_callback, directory_callback )
+          if not pathname.endswith( '/.snapshots' ):
+             directory_callback( pathname )
+             if options.recursive:
+                walk_directory_tree( pathname, file_callback, directory_callback )
        elif S_ISREG(mode):
           file_callback( pathname )
        else:
