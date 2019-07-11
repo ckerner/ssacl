@@ -395,7 +395,7 @@ def clear_worker( filename ):
 
        myacl.clear_acls()
        temp_acl_file = get_temp_filename()
-       write_acl_file( temp_acl_file, myacl.acls )
+       write_acl_file( temp_acl_file, myacl.acls, default_acl )
        set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
        if options.default:
           myacl.get_default_acl()
@@ -413,7 +413,7 @@ def clear_worker( filename ):
 
           myacl.clear_default_acls()
           temp_default_acl_file = get_temp_filename()
-          write_acl_file( temp_default_acl_file, myacl.default_acls )
+          write_acl_file( temp_default_acl_file, myacl.default_acls, default_acl )
           set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 def process_clear_command():
@@ -444,7 +444,7 @@ def add_worker( filename ):
           myacl.add_group_acl( options.gid, options.acl_mask )
 
        temp_acl_file = get_temp_filename()
-       write_acl_file( temp_acl_file, myacl.acls )
+       write_acl_file( temp_acl_file, myacl.acls, default_acl )
        set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
 
        if options.default:
@@ -455,7 +455,7 @@ def add_worker( filename ):
              myacl.add_default_group_acl( options.gid, options.acl_mask )
 
           temp_default_acl_file = get_temp_filename()
-          write_acl_file( temp_default_acl_file, myacl.default_acls )
+          write_acl_file( temp_default_acl_file, myacl.default_acls, default_acl )
           set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 def process_add_acl():
@@ -496,7 +496,7 @@ def del_worker( filename ):
           myacl.del_group_acl( options.gid )
 
        temp_acl_file = get_temp_filename()
-       write_acl_file( temp_acl_file, myacl.acls )
+       write_acl_file( temp_acl_file, myacl.acls, default_acl )
        set_acl( myacl.filename, temp_acl_file, options.dryrun, options.verbose )
 
        if options.default:
@@ -507,7 +507,7 @@ def del_worker( filename ):
              myacl.del_default_group_acl( options.gid )
 
           temp_default_acl_file = get_temp_filename()
-          write_acl_file( temp_default_acl_file, myacl.default_acls )
+          write_acl_file( temp_default_acl_file, myacl.default_acls, default_acl )
           set_default_acl( myacl.dirname, temp_default_acl_file, options.dryrun, options.verbose )
 
 
