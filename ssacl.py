@@ -486,7 +486,7 @@ def chown_file( fnam=None, owner=-1, group=-1 ):
        print("Error: %s %s %s" % ( fnam, owner, group ) )
 
 
-def write_acl_file( aclfile=None, myacls=None, default_acl=None ):
+def write_acl_file( aclfile=None, myacls=None, def_acl=None ):
     """
     Write an ACL file. This does not have to be part of a class. You may
     want to write one for other thigns.
@@ -494,27 +494,27 @@ def write_acl_file( aclfile=None, myacls=None, default_acl=None ):
     if not myacls:
        return None
 
-    if not default_acl:
+    if not def_acl:
        return None
 
     if not aclfile:
        return None
         
     fd = open( aclfile, "w" )
-    if 'USERP' in myacls.keys:
+    if 'USERP' in myacls:
        fd.write( "user::" + myacls['USERP'] + "\n" )
     else:
-       fd.write( "user::" + default_acls['USERP'] + "\n" )
+       fd.write( "user::" + def_acl['USERP'] + "\n" )
 
-    if 'GROUPP' in myacls.keys:
+    if 'GROUPP' in myacls:
        fd.write( "group::" + myacls['GROUPP'] + "\n" )
     else:
-       fd.write( "group::" + default_acls['GROUPP'] + "\n" )
+       fd.write( "group::" + def_acl['GROUPP'] + "\n" )
 
-    if 'OTHERP' in myacls.keys:
+    if 'OTHERP' in myacls:
        fd.write( "other::" + myacls['OTHERP'] + "\n" )
     else:
-       fd.write( "other::" + default_acls['OTHERP'] + "\n" )
+       fd.write( "other::" + def_acl['OTHERP'] + "\n" )
 
     if 'MASK' in myacls.keys():
        fd.write( "mask::" + myacls['MASK'] + "\n" )
