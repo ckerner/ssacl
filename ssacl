@@ -224,6 +224,12 @@ def parse_options( argv ):
                          action = 'store_true',
                          help = "Execute in dry-run. Only display the commands to be executed. Default: %(default)s")
 
+    parser.add_argument( "-q", "--quiet",
+                         dest = "quiet",
+                         default = False,
+                         action = 'store_true',
+                         help = "Execute in quiet mode. Default: %(default)s")
+
     parser.add_argument( "-v", "--verbose",
                          dest = "verbose",
                          default = False,
@@ -259,7 +265,7 @@ def get_os_stat( pathname ):
        mode = mystat[ST_MODE]
     except:
        mystat = None
-       if options.verbose or options.debug:
+       if not options.quiet:
           print("Broken Link: %s " % ( pathname ) )
     return mystat
 
