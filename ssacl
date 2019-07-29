@@ -206,6 +206,12 @@ def parse_options( argv ):
                          action = 'store_true',
                          help = "Apply the ACL to all files and/or directories recursively. Default: %(default)s")
 
+    parser.add_argument( "-F", "--follow",
+                         dest = "follow",
+                         default = False,
+                         action = 'store_true',
+                         help = "Follow the link to the actual file, or just work on the link. Default: %(default)s")
+
     parser.add_argument( "-d", "--default",
                          dest = "default",
                          default = False,
@@ -250,7 +256,30 @@ def get_temp_filename():
     tf = tempfile.NamedTemporaryFile()
     return tf.name
 
-def walk_directory_tree( topdir, file_callback, directory_callback ):
+
+def process_links( linkname ):
+    """
+    Process the links.
+
+    :param: The link to process.
+    """
+    if options.debug:
+       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+
+    if options.verbose:
+       print("Processing Link: %s" % ( linkname ))
+
+    if options.follow:
+       actual_path = os.readlink( linkname )
+       if options.verbose:
+          print("Processing Link Target: %s" % ( actual_path ))
+    else:
+       actual_path = os.readlink( linkname )
+       if options.verbose:
+          print("Processing Link: %s" % ( linkname ))
+
+
+def walk_directory_tree( topdir, file_callback, directory_callback, link_callback ):
     """
     This will recursively descend thru the directory tree rooted at the top
     and execute the specified callback routine for every entry.
@@ -266,9 +295,11 @@ def walk_directory_tree( topdir, file_callback, directory_callback ):
           if not pathname.endswith( '/.snapshots' ):
              directory_callback( pathname )
              if options.recursive:
-                walk_directory_tree( pathname, file_callback, directory_callback )
+                walk_directory_tree( pathname, file_callback, directory_callback, link_callback )
        elif S_ISREG(mode):
           file_callback( pathname )
+       elif S_ISLNK(mode):
+          link_callback( pathname )
        else:
           print("Skipping: %s " % ( pathname ) )
 
@@ -303,7 +334,7 @@ def process_json_command():
         mode = os.stat( filename )[ST_MODE]
         if S_ISDIR(mode):
            json_worker( filename )
-           walk_directory_tree( filename, json_worker, json_worker )
+           walk_directory_tree( filename, json_worker, json_worker, process_links )
         else:
            json_worker( filename )
 
@@ -334,7 +365,7 @@ def process_list_command():
         mode = os.stat( filename )[ST_MODE]
         if S_ISDIR(mode):
            list_worker( filename )
-           walk_directory_tree( filename, list_worker, list_worker )
+           walk_directory_tree( filename, list_worker, list_worker, process_links )
         else:
            list_worker( filename )
 
@@ -366,7 +397,7 @@ def process_set_command():
            mode = os.stat( filename )[ST_MODE]
            if S_ISDIR(mode):
               set_worker( filename )
-              walk_directory_tree( filename, set_worker, set_worker )
+              walk_directory_tree( filename, set_worker, set_worker, process_links )
            else:
               set_worker( filename )
     else:
@@ -428,7 +459,7 @@ def process_clear_command():
         mode = os.stat( filename )[ST_MODE]
         if S_ISDIR(mode):
            clear_worker( filename )
-           walk_directory_tree( filename, clear_worker, clear_worker )
+           walk_directory_tree( filename, clear_worker, clear_worker, process_links )
         else:
            clear_worker( filename )
 
@@ -480,7 +511,7 @@ def process_add_acl():
         mode = os.stat( filename )[ST_MODE]
         if S_ISDIR(mode):
            add_worker( filename )
-           walk_directory_tree( filename, add_worker, add_worker )
+           walk_directory_tree( filename, add_worker, add_worker, process_links )
         else:
            add_worker( filename )
 
@@ -528,7 +559,7 @@ def process_del_acl():
         mode = os.stat( filename )[ST_MODE]
         if S_ISDIR(mode):
            del_worker( filename )
-           walk_directory_tree( filename, del_worker, del_worker )
+           walk_directory_tree( filename, del_worker, del_worker, process_links )
         else:
            del_worker( filename )
 
