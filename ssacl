@@ -230,6 +230,12 @@ def parse_options( argv ):
                          action = 'store_true',
                          help = "Execute in dry-run. Only display the commands to be executed. Default: %(default)s")
 
+    parser.add_argument( "-q", "--quiet",
+                         dest = "quiet",
+                         default = False,
+                         action = 'store_true',
+                         help = "Execute in quiet mode. Default: %(default)s")
+
     parser.add_argument( "-v", "--verbose",
                          dest = "verbose",
                          default = False,
@@ -256,7 +262,6 @@ def get_temp_filename():
     tf = tempfile.NamedTemporaryFile()
     return tf.name
 
-
 def process_links( linkname ):
     """
     Process the links.
@@ -279,17 +284,35 @@ def process_links( linkname ):
           print("Processing Link: %s" % ( linkname ))
 
 
+def get_os_stat( pathname ):
+    if options.debug:
+       print( "Trace: %s" % ( sys._getframe().f_code.co_name ) )
+
+    try:
+       mystat = os.stat( pathname )
+       mode = mystat[ST_MODE]
+    except:
+       mystat = None
+       if not options.quiet:
+          print("Broken Link: %s " % ( pathname ) )
+    return mystat
+
 def walk_directory_tree( topdir, file_callback, directory_callback, link_callback ):
     """
     This will recursively descend thru the directory tree rooted at the top
     and execute the specified callback routine for every entry.
     """
     if options.debug:
-       print("Trace: %s" % ( sys._getframe().f_code.co_name ))
+       print( "Trace: %s" % ( sys._getframe().f_code.co_name ) )
 
     for file in os.listdir( topdir ):
        pathname = os.path.join( topdir, file )
-       mode = os.stat( pathname )[ST_MODE]
+       mystat = get_os_stat( pathname )
+
+       if mystat:
+          mode = mystat[ST_MODE]
+       else:
+          continue
 
        if S_ISDIR(mode):
           if not pathname.endswith( '/.snapshots' ):
@@ -302,6 +325,8 @@ def walk_directory_tree( topdir, file_callback, directory_callback, link_callbac
           link_callback( pathname )
        else:
           print("Skipping: %s " % ( pathname ) )
+
+
 
 def json_worker( filename ):
     """
@@ -331,7 +356,13 @@ def process_json_command():
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
     for filename in args:
-        mode = os.stat( filename )[ST_MODE]
+	mystat = get_os_stat( filename )
+
+	if mystat:
+           mode = mystat[ST_MODE]
+	else:
+           continue
+
         if S_ISDIR(mode):
            json_worker( filename )
            walk_directory_tree( filename, json_worker, json_worker, process_links )
@@ -362,7 +393,13 @@ def process_list_command():
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
     for filename in args:
-        mode = os.stat( filename )[ST_MODE]
+	mystat = get_os_stat( filename )
+
+	if mystat:
+           mode = mystat[ST_MODE]
+	else:
+           continue
+
         if S_ISDIR(mode):
            list_worker( filename )
            walk_directory_tree( filename, list_worker, list_worker, process_links )
@@ -394,7 +431,14 @@ def process_set_command():
        print("ERROR: ACL file not specified! \nUsage: ssacl --set -f <ACL File> [ FILE1, FILE2, ....]")
     elif os.path.isfile( os.path.abspath( options.acl_file )):
        for filename in args:
-           mode = os.stat( filename )[ST_MODE]
+           mystat = get_os_stat( filename )
+
+           if mystat:
+              mode = mystat[ST_MODE]
+           else:
+               continue
+
+           mode = mystat[ST_MODE]
            if S_ISDIR(mode):
               set_worker( filename )
               walk_directory_tree( filename, set_worker, set_worker, process_links )
@@ -456,7 +500,14 @@ def process_clear_command():
        print("Trace: %s" % ( sys._getframe().f_code.co_name ))
 
     for filename in args:
-        mode = os.stat( filename )[ST_MODE]
+        mystat = get_os_stat( filename )
+
+        if mystat:
+           mode = mystat[ST_MODE]
+        else:
+           continue
+
+        mode = mystat[ST_MODE]
         if S_ISDIR(mode):
            clear_worker( filename )
            walk_directory_tree( filename, clear_worker, clear_worker, process_links )
@@ -508,7 +559,14 @@ def process_add_acl():
        sys.exit(1)
 
     for filename in args:
-        mode = os.stat( filename )[ST_MODE]
+        mystat = get_os_stat( filename )
+
+        if mystat:
+           mode = mystat[ST_MODE]
+        else:
+           continue
+
+        mode = mystat[ST_MODE]
         if S_ISDIR(mode):
            add_worker( filename )
            walk_directory_tree( filename, add_worker, add_worker, process_links )
@@ -556,7 +614,14 @@ def process_del_acl():
        sys.exit(1)
 
     for filename in args:
-        mode = os.stat( filename )[ST_MODE]
+        mystat = get_os_stat( filename )
+
+        if mystat:
+           mode = mystat[ST_MODE]
+        else:
+           continue
+
+        mode = mystat[ST_MODE]
         if S_ISDIR(mode):
            del_worker( filename )
            walk_directory_tree( filename, del_worker, del_worker, process_links )
