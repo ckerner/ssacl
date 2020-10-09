@@ -34,12 +34,12 @@ import os
 import shlex
 import json
 from stat import *
-from tempfile import mkstemp
+import tempfile
 import pprint
 
 DRYRUN = 0
-MMGETACL = '/usr/lpp/mmfs/bin/mmgetacl '
-MMPUTACL = '/usr/lpp/mmfs/bin/mmputacl '
+MMGETACL = '/usr/lpp/mmfs/bin/mmgetacl'
+MMPUTACL = '/usr/lpp/mmfs/bin/mmputacl'
 
 """
 ACL Dictionary Structure:
@@ -61,6 +61,38 @@ ACL Dictionary Structure:
              [EFFECTIVE]
 """
 
+
+def execute_command( commandString=None, Debug=False ):
+    """
+    This routing will execute a command and return its output.
+
+    Arguments:
+        commandString - The command you wish to execute.
+
+    Return Values:
+        1 - The return code of the command
+        2 - The information sent to STDOUT from the command
+        3 - The information sent to STDERR from the command
+
+    Note: It is up to the caller to determine success/failure.
+
+    """
+    if not commandString:
+       return( 99999999, None, None )
+
+    shellCommand = shlex.split( commandString )
+    subp = Popen( shellCommand, stdout=PIPE, stderr=PIPE )
+    ( outdata, errdata ) = subp.communicate()
+
+    if Debug:
+       print("DEBUG: Command: {}".format(commandString))
+       print("DEBUG: Return Code: {}".format(subp.returncode))
+       print("DEBUG: STDOUT: {}".format(outdata))
+       print("DEBUG: STDERR: {}".format(errdata))
+
+    return  ( subp.returncode, outdata, errdata )
+
+
 class mmacls:
       """
       This class will handle the manipulation of the SpectrumScale ACLs
@@ -72,41 +104,56 @@ class mmacls:
           self.verbose = False
           self.is_file = True
           self.fname = fname
+
           try:
              self.filename = os.path.abspath( fname )
              self.stats = os.stat( self.filename )
           except:
              self.filename = None
              return None
-          if S_ISDIR(self.stats[ST_MODE]):
+
+          if S_ISDIR( self.stats[ST_MODE] ):
              self.dirname = self.filename
              self.is_file = False
           else:
              self.dirname = os.path.dirname( self.filename )
+
           self.get_acl()
-          #self.get_default_acl()
+
 
       def dump_mmacl( self ):
           print( "File: " + self.filename )
           print( "Directory: " + self.dirname )
           print( "ACL: " )
           pprint.pprint( self.acls )
-          #print( "Default ACL: " )
-          #print( self.default_acls )
+
 
       def dump_raw_acl( self ):
-          cmd = MMGETACL + '"' + self.filename + '"'
-          output = run_cmd( cmd )
-          for line in output.splitlines():
-              print( line )
-          print("")
+          cmd = MMGETACL + ' "' + self.filename + '"'
+          #cmd = [ MMGETACL, self.filename ]
+
+          ( rc, stdout, stderr ) = execute_command( cmd )
+          if rc == 0:
+             for line in output.splitlines():
+                 print( line )
+             print("")
+          else:
+             print("Command: %s ERROR: %s" % ( cmd, rc ) )
+             print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+
 
       def dump_raw_default_acl( self ):
-          cmd = MMGETACL + '-d ' + self.filename
-          output = run_cmd( cmd )
-          for line in output.splitlines():
-              print( line )
-          print("")
+          cmd = MMGETACL + ' -d ' + self.filename
+          #cmd = [ MMGETACL, self.filename ]
+          ( rc, stdout, stderr ) = execute_command( cmd )
+          if rc == 0:
+             for line in stdout.splitlines():
+                 print( line )
+             print("")
+          else:
+             print("Command: %s ERROR: %s" % ( cmd, rc ) )
+             print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+
 
       def clear_acls( self ):
           if 'MASK' in self.acls:
@@ -116,6 +163,7 @@ class mmacls:
           if 'GROUPS' in self.acls:
              del self.acls['GROUPS']
 
+
       def clear_default_acls( self ):
           if 'MASK' in self.default_acls:
              del self.default_acls['MASK']
@@ -123,6 +171,7 @@ class mmacls:
              del self.default_acls['USERS']
           if 'GROUPS' in self.default_acls:
              del self.default_acls['GROUPS']
+
 
       def get_acl( self ):
           """
@@ -138,8 +187,13 @@ class mmacls:
           mydict['FQPN'] = self.filename
           mydict['DIRNAME'] = self.dirname
 
-          cmd = MMGETACL + '"' + self.filename + '"'
-          output = run_cmd( cmd )
+          cmd = MMGETACL + ' "' + self.filename + '"'
+          #cmd = [ MMGETACL, self.filename ]
+          ( rc, output, stderr ) = execute_command( cmd )
+          if rc != 0:
+             print("Command: %s ERROR: %s" % ( cmd, rc ) )
+             print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+             return None
 
           for line in output.splitlines():
               if '#owner:' in line:
@@ -174,6 +228,7 @@ class mmacls:
                  mydict['MASK'] = line.split(':')[2]
           self.acls = mydict
 
+
       def get_default_acl( self ):
           """
           Fetch the file ACLs and return them in a dict.
@@ -187,8 +242,14 @@ class mmacls:
           mydict['USERS'] = {}
           mydict['FQPN'] = self.dirname
 
-          cmd = MMGETACL + '-d ' + '"' + self.dirname + '"'
-          output = run_cmd( cmd )
+          cmd = MMGETACL + ' -d "' + self.filename + '"'
+          #cmd = [ MMGETACL, self.filename ]
+          ( rc, output, stderr ) = execute_command( cmd )
+          if rc != 0:
+             print("Command: %s ERROR: %s" % ( cmd, rc ) )
+             print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+             return None
+
 
           for line in output.splitlines():
               if '#owner:' in line:
@@ -223,6 +284,7 @@ class mmacls:
                  mydict['MASK'] = line.split(':')[2]
           self.default_acls = mydict
 
+
       def add_user_acl( self, username, mask ):
           """
           Add the specified user into the object ACL.
@@ -232,6 +294,7 @@ class mmacls:
           """
           self.acls['USERS'][username] = {}
           self.acls['USERS'][username]['PERMS'] = mask
+
 
       def add_group_acl( self, groupname, mask ):
           """
@@ -243,6 +306,7 @@ class mmacls:
           self.acls['GROUPS'][groupname] = {}
           self.acls['GROUPS'][groupname]['PERMS'] = mask
 
+
       def add_default_user_acl( self, username, mask ):
           """
           Add the specified user into the object default ACL.
@@ -252,6 +316,7 @@ class mmacls:
           """
           self.default_acls['USERS'][username] = {}
           self.default_acls['USERS'][username]['PERMS'] = mask
+
 
       def add_default_group_acl( self, groupname, mask ):
           """
@@ -263,6 +328,7 @@ class mmacls:
           self.default_acls['GROUPS'][groupname] = {}
           self.default_acls['GROUPS'][groupname]['PERMS'] = mask
 
+
       def update_user_perms( self, mask ):
           """
           Update the POSIX user permissions.
@@ -270,6 +336,7 @@ class mmacls:
           :param: ACL mask
           """
           self.acls['USERP'] = mask
+
 
       def update_group_perms( self, mask ):
           """
@@ -279,6 +346,7 @@ class mmacls:
           """
           self.acls['GROUPP'] = mask
 
+
       def update_other_perms( self, mask ):
           """
           Update the POSIX other permissions.
@@ -287,14 +355,18 @@ class mmacls:
           """
           self.acls['OTHERP'] = mask
 
+
       def update_default_user_perms( self, mask ):
           self.default_acls['USERP'] = mask
+
 
       def update_default_group_perms( self, mask ):
           self.default_acls['GROUPP'] = mask
 
+
       def update_default_other_perms( self, mask ):
           self.default_acls['OTHERP'] = mask
+
 
       def del_user_acl( self, username ):
           """
@@ -307,6 +379,7 @@ class mmacls:
           else:
              print("%s does not have a user ACL on %s" % ( username, self.filename ))
 
+
       def del_group_acl( self, groupname ):
           """
           Remove a group ACL from the current ACL list.
@@ -317,6 +390,7 @@ class mmacls:
              del self.acls['GROUPS'][groupname]
           else:
              print("%s does not have a group ACL on %s" % ( groupname, self.filename ))
+
 
       def del_default_user_acl( self, username ):
           """
@@ -329,6 +403,7 @@ class mmacls:
           else:
              print("%s does not have a user ACL on %s" % ( username, self.filename ))
 
+
       def del_default_group_acl( self, groupname ):
           """
           Remove a group ACL from the current default ACL list.
@@ -339,6 +414,7 @@ class mmacls:
              del self.default_acls['GROUPS'][groupname]
           else:
              print("%s does not have a group ACL on %s" % ( groupname, self.filename ))
+
 
       def get_group_acl( self, group=None ):
           """
@@ -360,6 +436,7 @@ class mmacls:
              else:
                 return '----'
 
+
       def set_default_acl( self, aclfile=None ):
           """
           This function will set the default acl of the currently specified file directory to the
@@ -368,13 +445,18 @@ class mmacls:
           :param: A string containing the fully qualified path to the ACL file.
           :return: Nothing
           """
-          cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + self.filename + '"'
+          cmd = MMPUTACL +  '-d -i ' + aclfile + ' "' + self.filename + '"'
+          #cmd = [ MMPUTACL, '-d', '-i', aclfile, "'"+self.filename+"'" ]
           if self.dryrun:
-             print( cmd )
+             print( "".join(cmd) )
           else:
              if self.verbose:
-                print( cmd )
-             run_cmd( cmd )
+                print( "".join(cmd) )
+             ( rc, stdout, stderr ) = execute_command( cmd )
+             if rc != 0:
+                print("Command: %s ERROR: %s" % ( cmd, rc ) )
+                print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+
 
       def set_acl( self, aclfile=None ):
           """
@@ -384,13 +466,19 @@ class mmacls:
           :param: A string containing the fully qualified path to the ACL file.
           :return: Nothing
           """
-          cmd = MMPUTACL + '-i ' + aclfile + ' "' + self.filename + '"'
+          cmd = MMPUTACL + ' -i ' + aclfile + ' "' + self.filename + '"'
+          #cmd = [ MMPUTACL, '-i', aclfile, "'"+self.filename+"'" ]
           if self.dryrun:
-             print( cmd )
+             print( "".join(cmd) )
           else:
              if self.verbose:
-                print( cmd )
-             run_cmd( cmd )
+                print( "".join(cmd) )
+
+             ( rc, stdout, stderr ) = execute_command( cmd )
+             if rc != 0:
+                print("Command: %s ERROR: %s" % ( cmd, rc ) )
+                print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+
 
       def debug_on( self ):
           """
@@ -398,11 +486,13 @@ class mmacls:
           """
           self.debug = True
 
+
       def debug_off( self ):
           """
           Turn debug off.
           """
           self.debug = False
+
 
       def toggle_debug( self ):
           """
@@ -413,17 +503,20 @@ class mmacls:
           else:
              self.debug = True
 
+
       def dryrun_on( self ):
           """
           Turn dryrun on.
           """
           self.dryrun = True
 
+
       def dryrun_off( self ):
           """
           Turn dryrun off.
           """
           self.dryrun = False
+
 
       def toggle_dryrun( self ):
           """
@@ -434,17 +527,20 @@ class mmacls:
           else:
              self.dryrun = False
 
+
       def verbose_on( self ):
           """
           Turn verbose on.
           """
           self.verbose = True
 
+
       def verbose_off( self ):
           """
           Turn verbose off.
           """
           self.verbose = False
+
 
       def toggle_verbose( self ):
           """
@@ -454,6 +550,22 @@ class mmacls:
              self.verbose = True
           else:
              self.verbose = False
+
+
+def run_cmd2( cmdstr=None ):
+    if not cmdstr:
+       return None
+    #print("CMDSTR: %s" % ( cmdstr ) )
+    subp = Popen(cmdstr, stdout=PIPE, stderr=PIPE )
+    (outdata, errdata) = subp.communicate()
+    #    if subp.returncode == 22:
+    #       return( 'File is not in gpfs.' )
+    if subp.returncode != 0:
+       dump_string = " ".join(cmdstr)
+       msg = "Error\n Command: {0}\n Message: {1}".format(dump_string,errdata)
+       raise UserWarning( msg )
+       exit( subp.returncode )
+    return( outdata )
 
 
 def run_cmd( cmdstr=None ):
@@ -476,6 +588,7 @@ def run_cmd( cmdstr=None ):
        exit( subp.returncode )
     return( outdata )
 
+
 def chown_file( fnam=None, owner=-1, group=-1 ):
     """
     To leave the owner or group the same, set it to -1
@@ -491,15 +604,19 @@ def write_acl_file( aclfile=None, myacls=None, def_acl=None ):
     Write an ACL file. This does not have to be part of a class. You may
     want to write one for other thigns.
     """
+    if not aclfile:
+       print("Error: write_acl_file: 3")
+       return None
+
     if not myacls:
+       print("Error: write_acl_file: 1")
        return None
 
     if not def_acl:
+       print("Error: write_acl_file: 2")
+       print( def_acl )
        return None
 
-    if not aclfile:
-       return None
-        
     fd = open( aclfile, "w" )
     if 'USERP' in myacls:
        fd.write( "user::" + myacls['USERP'] + "\n" )
@@ -533,6 +650,167 @@ def write_acl_file( aclfile=None, myacls=None, def_acl=None ):
            fd.write( "group:" + group + ":" + myacls['GROUPS'][group]['PERMS'] + "\n" )
     fd.close()
 
+def get_temp_filename():
+    """
+    Use the tempfile module to generate unique temporary work filenames.
+    (For the future when this gets to be parallelized.)
+    """
+    #if options.debug:
+    #   print("Trace: %s" % ( sys._getframe().f_code.co_name))
+
+    tf = tempfile.NamedTemporaryFile()
+    return tf.name
+
+
+def gac_update_default_acl( filename=None, aclGroup=None, aclPerms=None, dryrun=False, verbose=False ):
+    """
+    This function will update the default ACL on a directory to the contents of the specified ACL file.
+    """
+    aclFile = get_temp_filename()
+
+    cmd = MMGETACL + ' -d -o ' + aclFile + ' "' + filename + '"'
+    #cmd = [ MMGETACL, '-d', '-o', aclFile, filename ]
+    if dryrun:
+       print( "".join(cmd) )
+    else:
+       if verbose:
+          print( "".join(cmd) )
+       ( rc, stdout, stderr ) = execute_command( cmd )
+       if rc != 0:
+          print("Command: %s ERROR: %s" % ( cmd, rc ) )
+          print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+          return None
+
+
+    found = False
+    foundUser = False
+    foundGroup = False
+    foundOther = False
+    foundMask = False
+    with open( aclFile ) as f:
+       inputLine = f.read()
+       if aclGroup in inputLine:
+          found = True
+       if 'user::' in inputLine:
+          foundUser = True
+       if 'group::' in inputLine:
+          foundGroup = True
+       if 'other::' in inputLine:
+          foundOther = True
+       if 'mask::' in inputLine:
+          foundMask = True
+
+    if foundUser == False:
+       fd = open( aclFile, "a" )
+       fd.write( "user::rwxc\n" )
+       fd.write( "group::r-x-\n" )
+       fd.write( "other::----\n" )
+       fd.write( "mask::r-x-\n" )
+       foundMask = True
+       fd.close()
+
+    #if foundGroup == False:
+    #   fd = open( aclFile, "a" )
+    #   fd.close()
+
+    #if foundOther == False:
+    #   fd = open( aclFile, "a" )
+    #   fd.close()
+
+    #if foundMask == False:
+    #   fd = open( aclFile, "a" )
+    #   fd.close()
+
+    if found == False:
+       fd = open( aclFile, "a" )
+       if foundMask == False:
+          fd.write( "mask::r-x-\n" )
+       fd.write( "group:" + aclGroup + ":" + aclPerms + "\n" )
+       fd.close()
+
+       cmd = MMPUTACL + ' -d -i ' + aclFile + ' "' + filename + '"'
+       #cmd = [ MMPUTACL, '-d', '-i', aclFile, filename ]
+       if dryrun:
+          print( "".join(cmd) )
+       else:
+          if verbose:
+             print( "".join(cmd) )
+          ( rc, stdout, stderr ) = execute_command( cmd )
+          if rc != 0:
+             print("Command: %s ERROR: %s" % ( cmd, rc ) )
+             print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+             return None
+
+
+def gac_update_acl( filename=None, aclGroup=None, aclPerms=None, dryrun=False, verbose=False ):
+    """
+    This function will update the default ACL on a directory to the contents of the specified ACL file.
+    """
+    aclFile = get_temp_filename()
+
+    cmd = MMGETACL + ' -o ' + aclFile + ' "' + filename + '"'
+    #cmd = [ MMGETACL, '-o', aclFile, filename ]
+    if dryrun:
+       print( "".join(cmd) )
+    else:
+       if verbose:
+          print( "".join(cmd) )
+       ( rc, stdout, stderr ) = execute_command( cmd )
+       if rc != 0:
+          print("Command: %s ERROR: %s" % ( cmd, rc ) )
+          print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+          return None
+
+    found = False
+    foundUser = False
+    foundGroup = False
+    foundOther = False
+    foundMask = False
+    with open( aclFile ) as f:
+       inputLine = f.read()
+       if aclGroup in inputLine:
+          found = True
+       if 'user::' in inputLine:
+          foundUser = True
+       if 'group::' in inputLine:
+          foundGroup = True
+       if 'other::' in inputLine:
+          foundOther = True
+       if 'mask::' in inputLine:
+          foundMask = True
+       if aclGroup in f.read():
+          found = True
+
+    if foundUser == False:
+       fd = open( aclFile, "a" )
+       fd.write( "user::rwxc\n" )
+       fd.write( "group::r-x-\n" )
+       fd.write( "other::----\n" )
+       fd.write( "mask::r-x-\n" )
+       foundMask = True
+       fd.close()
+
+    if found == False:
+       fd = open( aclFile, "a" )
+       if foundMask == False:
+          fd.write( "mask::r-x-\n" )
+       fd.write( "group:" + aclGroup + ":" + aclPerms + "\n" )
+       fd.close()
+
+       cmd = MMPUTACL + ' -i ' + aclFile + ' "' + filename + '"'
+       #cmd = [ MMPUTACL, '-i', aclFile, filename ]
+       if dryrun:
+          print( "".join(cmd) )
+       else:
+          if verbose:
+             print( "".join(cmd) )
+          ( rc, stdout, stderr ) = execute_command( cmd )
+          if rc != 0:
+             print("Command: %s ERROR: %s" % ( cmd, rc ) )
+             print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+
+
+
 def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
     """
     This function will set the default ACL on a directory to the contents of the specified ACL file.
@@ -542,13 +820,19 @@ def set_default_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
     :param: Execute in dry-run mode. True or False. Default: False
     :param: Execute in verbose mode. True or False. Default: False
     """
-    cmd = MMPUTACL + '-d -i ' + aclfile + ' "' + filename + '"'
+    cmd = MMPUTACL + ' -d -i ' + aclfile + ' "' + filename + '"'
+    #cmd = [ MMPUTACL, '-d', '-i', aclfile, "'"+filename+"'" ]
+    #cmd = [ MMPUTACL, '-d', '-i', aclfile, filename ]
     if dryrun:
-       print( cmd )
+       print( "".join(cmd) )
     else:
        if verbose:
-          print( cmd )
-       run_cmd( cmd )
+          print( "".join(cmd) )
+       ( rc, stdout, stderr ) = execute_command( cmd )
+       if rc != 0:
+          print("Command: %s ERROR: %s" % ( cmd, rc ) )
+          print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+
 
 def set_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
     """
@@ -559,13 +843,20 @@ def set_acl( filename=None, aclfile=None, dryrun=False, verbose=False ):
     :param: Execute in dry-run mode. True or False. Default: False
     :param: Execute in verbose mode. True or False. Default: False
     """
-    cmd = MMPUTACL + '-i ' + aclfile + ' "' + filename + '"'
+    #cmd = MMPUTACL + '-i ' + aclfile + ' "' + filename + '"'
+    #cmd = [ MMPUTACL, '-i', aclfile, "'"+filename+"'" ]
+    cmd = MMPUTACL + ' -i ' + aclfile + ' "' + filename + '"'
+    #cmd = [ MMPUTACL, '-i', aclfile, filename ]
     if dryrun:
-       print( cmd )
+       print( "".join(cmd) )
     else:
        if verbose:
-          print( cmd )
-       run_cmd( cmd )
+          print( "".join(cmd) )
+       ( rc, stdout, stderr ) = execute_command( cmd )
+       if rc != 0:
+          print("Command: %s ERROR: %s" % ( cmd, rc ) )
+          print("STDOUT: %s\nSTDERR: %s" % ( stdout, stderr ) )
+
 
 def return_json( theacl=None ):
     """
